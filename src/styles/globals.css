@@ -5,6 +5,18 @@
   --foreground: #171717;
 }
 
+:root { --header-h: 64px; }
+
+html, body, #__next { height: 100%; }
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+/* Keep body defaults minimal; registration.css handles page look */
+body { margin: 0; }
+
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

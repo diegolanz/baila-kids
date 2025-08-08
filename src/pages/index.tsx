@@ -1,117 +1,415 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { useState, useRef, useEffect } from 'react';
+// import '@/styles/registration.css'; // Local scoped CSS in /styles
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Utility types
+
+const daysMap = {
+  KATY: ['Tuesday', 'Wednesday'],
+  SUGARLAND: ['Monday', 'Thursday'],
+} as const satisfies Record<LocationKey, readonly DayKey[]>;
+
+const startDates: Record<LocationKey, Record<DayKey, string>> = {
+  KATY: {
+    Monday: '',
+    Tuesday: '2025-08-26',
+    Wednesday: '2025-08-27',
+    Thursday: '',
+  },
+  SUGARLAND: {
+    Monday: '2025-08-25',
+    Tuesday: '',
+    Wednesday: '',
+    Thursday: '2025-08-28',
+  },
+};
+
+type LocationKey = 'KATY' | 'SUGARLAND';
+type FrequencyKey = 'ONCE' | 'TWICE';
+export type DayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
+
+
+const prices: Record<LocationKey, Record<DayKey | 'both', number>> = {
+  KATY: { Monday: 0, Tuesday: 245, Wednesday: 245, Thursday: 0, both: 450 },
+  SUGARLAND: { Monday: 230, Tuesday: 0, Wednesday: 0, Thursday: 245, both: 450 },
+};
+
+function formatReadableDate(dateString: string | undefined): string {
+  if (!dateString) return ''; // or return "Invalid date" or similar fallback
+
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+  const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+  const dayNum = date.getDate();
+
+  const getOrdinal = (n: number) => {
+    if (n > 3 && n < 21) return `${n}th`;
+    switch (n % 10) {
+      case 1: return `${n}st`;
+      case 2: return `${n}nd`;
+      case 3: return `${n}rd`;
+      default: return `${n}th`;
+    }
+  };
+
+  return `${dayName}, ${monthName} ${getOrdinal(dayNum)}`;
+}
+
+
+
 
 export default function Home() {
-  return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/pages/index.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-          <h1 className="text-4xl font-bold text-pink-500">¡Baila Kids!</h1>
+  const [liabilityAccepted, setLiabilityAccepted] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [location, setLocation] = useState<'KATY' | 'SUGARLAND' | null>(null);
+  const [frequency, setFrequency] = useState<'ONCE' | 'TWICE' | null>(null);
+  const [selectedDay, setSelectedDay] = useState<DayKey | null>(null);
+  const [formVisible, setFormVisible] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNote, setShowNote] = useState(false);
 
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [studentName, setStudentName] = useState('');
+  const [age, setAge] = useState('');
+  const [parentName, setParentName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<string>('');
+
+  const frequencyRef = useRef<HTMLDivElement>(null);
+  const dayRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (location && frequencyRef.current) {
+      frequencyRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (frequency === 'ONCE' && dayRef.current) {
+      dayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (frequency === 'TWICE') {
+      setFormVisible(true);
+    }
+
+  }, [frequency]);
+
+  useEffect(() => {
+    if (selectedDay) setFormVisible(true);
+  }, [selectedDay]);
+
+  useEffect(() => {
+    if (formVisible && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+  }, [formVisible]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+$/;
+  const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!nameRegex.test(studentName)) {
+    setFormError('Please enter the student\'s first and last name.');
+    return;
+  }
+
+  const parsedAge = parseInt(age);
+  if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 17) {
+    setFormError('Please enter a valid student age between 1 and 17.');
+    return;
+  }
+
+  if (!nameRegex.test(parentName)) {
+    setFormError('Please enter the parent\'s first and last name.');
+    return;
+  }
+
+  if (!phoneRegex.test(phone)) {
+    setFormError('Please enter a valid 10-digit phone number.');
+    return;
+  }
+
+  if (!emailRegex.test(email)) {
+    setFormError('Please enter a valid email address.');
+    return;
+  }
+
+  if (!paymentMethod) {
+    setFormError('Please select a payment method.');
+    return;
+  }
+
+  if (!liabilityAccepted) {
+    setFormError('You must accept the liability disclaimer to continue.');
+    return;
+  }
+
+  setIsSubmitting(true);
+  setFormError('');
+
+  const selectedDays = frequency === 'ONCE' ? [selectedDay!] : daysMap[location!];
+  const startDate = new Date(startDates[location!][selectedDays[0]]);
+
+  const payload = {
+    studentName,
+    age: parsedAge,
+    parentName,
+    phone,
+    email,
+    location,
+    frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
+    selectedDays,
+    startDate: startDate.toISOString(),
+    liabilityAccepted: true,
+    paymentMethod,
+    waiverSignature: {
+        name: parentName,
+        address: email, // or a new field for physical address if you collect one
+      },
+
+  };
+
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+
+
+
+  const data = await res.json();
+
+  if (data.success) {
+    await fetch('/api/sendConfirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    setSubmitted(true);
+  } else {
+    setFormError('Something went wrong. Please try again.');
+  }
+  setFormVisible(false);
+  setLocation(null);
+  setIsSubmitting(false);
+};
+
+const resetForm = () => {
+  setSubmitted(false);
+  setFormVisible(false);
+  setLocation(null);
+  setFrequency(null);
+  setSelectedDay(null);
+  setStudentName('');
+  setAge('');
+  setParentName('');
+  setPhone('');
+  setEmail('');
+  setPaymentMethod('');
+  setLiabilityAccepted(false);
+  setFormError('');
+  setShowNote(false);
+};
+
+
+
+  const calculateTotal = () => {
+    if (!location || !frequency) return 0;
+    if (frequency === 'ONCE' && selectedDay) return prices[location][selectedDay];
+    if (frequency === 'TWICE') return prices[location].both;
+    return 0;
+  };
+
+  
+  const personalizedWaiverText = (text: string) => {
+    if (!studentName) return text;
+    return text.replaceAll('PARTICIPANT', studentName.toUpperCase());
+  };
+
+
+  return (
+    <div className="registration-wrapper">
+      <div className="background-doodles">
+        
+      </div>
+
+       <div className="logo-container">
+            <img src="/bailakids/logo.png" alt="Baila Kids Logo" className="logo" />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+
+    {!submitted && (
+      <>
+      <div className="step">
+        <h1 className="reg-title">Welcome to the Baila Kids class registration!</h1>
+        <h2 className="questions">First, which is your preferred location?</h2>
+        <div className="button-group">
+          {(['KATY', 'SUGARLAND'] as const).map(loc => (
+            <button key={loc} onClick={() => setLocation(loc)} className={location === loc ? 'active' : ''}>{loc}</button>
+          ))}
+        </div>
+      </div>
+
+      {location && (
+        <div className="step fade-in" ref={frequencyRef}>
+          <h2 className="questions">How often do you want classes?</h2>
+          {/* <p className="daychose">
+            {frequency === 'ONCE'
+              ? 'Choose a day below to see individual pricing.'
+              : `Total for both days: $${prices[location].both}`}
+          </p> */}
+          <div className="button-group">
+            <button onClick={() => setFrequency('ONCE')} className={frequency === 'ONCE' ? 'active' : ''}>
+              1 Day / Week (${selectedDay ? prices[location][selectedDay] : '240'})
+            </button>
+            <button onClick={() => setFrequency('TWICE')} className={frequency === 'TWICE' ? 'active' : ''}>
+              2 Days / Week (${prices[location].both})
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {location && frequency === 'ONCE' && (
+        <div className="step fade-in" ref={dayRef}>
+          <h2 className="questions">Choose your day (classes start the week of August 25th,2025)</h2>
+            <div className="button-group">
+
+              {daysMap[location].map(day => (
+                <div className="day-option-wrapper" key={day}>
+                  <div className="day-option">
+                    <button
+                      onClick={() => setSelectedDay(day)}
+                      className={selectedDay === day ? 'active' : ''}
+                    >
+                      {day} (${prices[location][day as DayKey]})
+                    </button>
+                    {location === 'SUGARLAND' && day === 'Monday' && (
+                      <button
+                        onClick={() => setShowNote(prev => !prev)}
+                        title="Why is Monday cheaper?"
+                        className="info-circle"
+                      >
+                        ?
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {showNote && <p className="note">No class on memorial day!</p>}
+            </div>
+        </div>
+      )}
+
+      {formVisible && !submitted && (
+        <div className="step fade-in" ref={formRef}>
+          <h2 className="student-reg-title">Student Registration</h2>
+          <form onSubmit={handleSubmit}>
+            <input type="text" placeholder="Student Name" required value={studentName} onChange={e => setStudentName(e.target.value)} />
+            <input placeholder="Student Age" required type="number" value={age} onChange={e => setAge(e.target.value)} />
+            <input type="text" placeholder="Parent/Guardian Name" required value={parentName} onChange={e => setParentName(e.target.value)} />
+            <input type="text" placeholder="Phone" required value={phone} onChange={e => setPhone(e.target.value)} />
+            <input placeholder="Email" required type="email" value={email} onChange={e => setEmail(e.target.value)} />
+
+            <p className="total">Total: ${calculateTotal()}</p>
+
+            <fieldset>
+              <legend>Select Payment Method:</legend>
+              <label><input type="radio" name="payment" value="Cash" onChange={e => setPaymentMethod(e.target.value)} required /> Cash</label>
+              <label><input type="radio" name="payment" value="Zelle" onChange={e => setPaymentMethod(e.target.value)} /> Zelle to Cristina Pantin 281-658-1140</label>
+              <label><input type="radio" name="payment" value="Check" onChange={e => setPaymentMethod(e.target.value)} /> Check</label>
+            </fieldset>
+
+            <div className="liability-section">
+              <h3 className="liability-title">Liability Waiver</h3>
+              <div className="liability-text">
+                <p>
+                  {personalizedWaiverText(
+                    `On behalf of myself and my child/children participating in dance classes and related activities (“PARTICIPANT”), I acknowledge and understand the risks of physical injury inherent to dance classes and performances, including, without limitation, the risk of PARTICIPANT’s serious bodily injury or death. I understand that it is my responsibility to consult with a physician prior to and regarding PARTICIPANT’s participation in classes offered by BAILA KIDS.`
+                  )}
+                </p>
+                <p>
+                  {personalizedWaiverText(
+                    `On behalf of myself, and PARTICIPANT, I willingly assume such risks and I hereby expressly waive, release and hold harmless BAILA KIDS, its principals, officers, employees, agents, independent contractors and dance teachers (“RELEASEES”) from any and all liability, claims, judgments, or demands, arising from injuries sustained or illnesses contracted by PARTICIPANT while attending or participating in any dance classes, camps, rehearsals, workshops, birthday parties, events or performances. I covenant not to make or bring any such claim against BAILA KIDS or any other releasee and forever release and discharge BAILA KIDS and all other releasees from liability under such claims.`
+                  )}
+                </p>
+                <p>
+                  {personalizedWaiverText(
+                    `Further, I hereby represent that PARTICIPANT has no physical or mental disability or impairment or any illness that will endanger PARTICIPANT or others in connection with PARTICIPANT's participation in the dance classes and performances offered by BAILA KIDS. Furthermore, I agree to obey the class and facility rules and take full responsibility for PARTICIPANT’s behavior in addition to any damage that PARTICIPANT may cause to the facilities utilized by BAILA KIDS. In the event that I observe any unsafe conduct or conditions before, during or after classes offered by BAILA KIDS, I agree to report the unsafe conduct or conditions to the owner, director, instructor or staff member as soon as possible.`
+                  )}
+                </p>
+              </div>
+
+
+              <label className="liability-checkbox">
+                <input
+                  type="checkbox"
+                  checked={liabilityAccepted}
+                  onChange={e => setLiabilityAccepted(e.target.checked)}
+                />
+                I ACCEPT AND ACKNOWLEDGE
+              </label>
+            </div>
+
+
+            {formError && <p className="error">{formError}</p>}
+
+            {formVisible && !submitted && (
+              <div className="summary-box">
+                <h3 className='summary-title'>Summary: Please confirm that all information is correct</h3>
+                <ul>
+                  <li><strong>Location:</strong> {location}</li>
+                  <li><strong>Frequency:</strong> {frequency === 'ONCE' ? 'Once a week' : 'Twice a week'}</li>
+                  <li><strong>Selected Day(s):</strong> {frequency === 'ONCE' ? selectedDay : daysMap[location!].join(', ')}</li>
+                  <li>
+                    <strong>Start Date{frequency === 'TWICE' ? 's' : ''}:</strong>{' '}
+                    {frequency === 'ONCE'
+                      ? formatReadableDate(startDates[location!][selectedDay!])
+                      : daysMap[location!]
+                          .map(day => `${day}: ${formatReadableDate(startDates[location!][day])}`)
+                          .join(' | ')
+                    }
+                  </li>
+                  <li><strong>Student:</strong> {studentName} (Age: {age})</li>
+                  <li><strong>Parent:</strong> {parentName}</li>
+                  <li><strong>Phone:</strong> {phone}</li>
+                  <li><strong>Email:</strong> {email}</li>
+                  <li><strong>Payment Method:</strong> {paymentMethod}</li>
+                  <li><strong  className='final-total'>Total:</strong> ${calculateTotal()}</li>
+                </ul>
+              </div>
+            )}
+
+
+            <button type="submit" disabled={isSubmitting || !studentName || !age || !parentName || !phone || !email || !paymentMethod || !liabilityAccepted}>
+              {isSubmitting ? 'Submitting...' : 'Register'}
+            </button>
+          </form>
+        </div>
+      )}
+      </>
+    )}
+
+      {submitted && (
+        <div className="confirmation">
+          <h2 className="confirmation-title">🎉 Registration Complete! 🎉</h2>
+          <p className="confirmation-text">
+            Thank you for registering. We’ve received your information and will send you a confirmation email shortly!
+          </p>
+          <button className="reset-button" onClick={resetForm}>
+            Submit another application
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }

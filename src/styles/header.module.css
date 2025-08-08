@@ -1,0 +1,33 @@
+:root { --header-h: 64px; }
+
+.header {
+  position: sticky;       /* follows while scrolling */
+  top: 0;
+  z-index: 1000;
+  height: var(--header-h);
+  background: rgba(248, 241, 221, 0.92); /* match your page bg */
+  backdrop-filter: saturate(140%) blur(6px);
+  -webkit-backdrop-filter: saturate(140%) blur(6px);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.brand { display: inline-flex; align-items: center; text-decoration: none; }
+
+.logo {
+  height: calc(var(--header-h) - 16px);
+  width: auto;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  .logo { height: 40px; }
+}
