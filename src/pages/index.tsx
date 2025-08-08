@@ -25,7 +25,7 @@ const startDates: Record<LocationKey, Record<DayKey, string>> = {
 };
 
 type LocationKey = 'KATY' | 'SUGARLAND';
-type FrequencyKey = 'ONCE' | 'TWICE';
+// type FrequencyKey = 'ONCE' | 'TWICE';
 export type DayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
 
 

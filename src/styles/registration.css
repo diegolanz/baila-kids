@@ -514,9 +514,9 @@ input[type="checkbox"] { accent-color: #f26b7d; }
   left: -8px;
   background-color: #ff4d91;
   color: white;
-  border-radius: 50%;
+  border-radius: 100%;
   font-size: 0.75rem;
-  width: 20px;
+  max-width:10%;  
   height: 20px;
   display: flex;
   justify-content: center;

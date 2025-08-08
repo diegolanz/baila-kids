@@ -25,13 +25,13 @@ const AdminPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [edited, setEdited] = useState<Record<string, Partial<Student>>>({});
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
-  const [showTable, setShowTable] = useState(true);
+  // const [showTable, setShowTable] = useState(true);
   const [showAllStudents, setShowAllStudents] = useState(true);
   const [showPaidStudents, setShowPaidStudents] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showAddEvent, setShowAddEvent] = useState(false);
+  // const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // const [showAddEvent, setShowAddEvent] = useState(false);
   const [customEvents, setCustomEvents] = useState<{ date: string; note: string }[]>([]);
-  const [newEventNote, setNewEventNote] = useState('');
+  // const [newEventNote, setNewEventNote] = useState('');
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventDate, setEventDate] = useState<Date>(new Date());
