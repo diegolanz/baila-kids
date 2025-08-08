@@ -32,8 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const response = await resend.emails.send({
-      from: 'Baila Kids <onboarding@resend.dev>',
-      to: [email],
+      from: 'Baila Kids <registration@bailakids.org>',
+      to: ["diegolanz0412@gmail.com"],
       subject: 'Baila Kids Registration Confirmation',
       html: message,
     });
