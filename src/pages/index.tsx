@@ -24,6 +24,21 @@ const startDates: Record<LocationKey, Record<DayKey, string>> = {
   },
 };
 
+type RegistrationPayload = {
+  studentName: string;
+  age: number;
+  parentName: string;
+  phone: string;
+  email: string;
+  location: 'KATY' | 'SUGARLAND';
+  frequency: 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
+  selectedDays: DayKey[];
+  startDate: string; // ISO format
+  liabilityAccepted: boolean;
+  paymentMethod: 'Cash' | 'Zelle' | 'Check';
+  waiverSignature?: { name?: string; address?: string };
+};
+
 type LocationKey = 'KATY' | 'SUGARLAND';
 // type FrequencyKey = 'ONCE' | 'TWICE';
 export type DayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
@@ -153,27 +168,25 @@ export default function Home() {
   setIsSubmitting(true);
   setFormError('');
 
-  const selectedDays = frequency === 'ONCE' ? [selectedDay!] : daysMap[location!];
+  const selectedDays: DayKey[] =
+    frequency === 'ONCE' ? [selectedDay!] : [...daysMap[location!]];
   const startDate = new Date(startDates[location!][selectedDays[0]]);
 
-  const payload = {
+  const payload: RegistrationPayload = {
     studentName,
     age: parsedAge,
     parentName,
     phone,
     email,
-    location,
+    location: location!,
     frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
     selectedDays,
     startDate: startDate.toISOString(),
     liabilityAccepted: true,
-    paymentMethod,
-    waiverSignature: {
-        name: parentName,
-        address: email, // or a new field for physical address if you collect one
-      },
-
+    paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
+    waiverSignature: { name: parentName, address: email },
   };
+
 
   const res = await fetch('/api/register', {
     method: 'POST',

@@ -1,55 +1,64 @@
-import { Resend } from 'resend';
 import type { NextApiRequest, NextApiResponse } from 'next';
+// Resend example; adjust to your actual email provider setup.
+import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).end();
+type ApiResp = { success: boolean; error?: string };
 
-  const {
-    studentName,
-    parentName,
-    age,
-    phone,
-    email,
-    location,
-    frequency,
-    selectedDays,
-    paymentMethod,
-  } = req.body;
-
-  const message = `
-    <h2>New Registration for Baila Kids</h2>
-    <p><strong>Student:</strong> ${studentName} (${age} years old)</p>
-    <p><strong>Parent:</strong> ${parentName}</p>
-    <p><strong>Phone:</strong> ${phone}</p>
-    <p><strong>Email:</strong> ${email}</p>
-    <p><strong>Location:</strong> ${location}</p>
-    <p><strong>Frequency:</strong> ${frequency}</p>
-    <p><strong>Days:</strong> ${selectedDays.join(', ')}</p>
-    <p><strong>Payment Method:</strong> ${paymentMethod}</p>
-  `;
+export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiResp>) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method Not Allowed' });
+  }
 
   try {
-    const response = await resend.emails.send({
-      from: 'Baila Kids <registration@bailakids.org>',
-      to: ["diegolanz0412@gmail.com"],
-      subject: 'Baila Kids Registration Confirmation',
-      html: message,
+    const {
+      email,
+      studentName,
+      location,
+      frequency,
+      selectedDays,
+      startDate,
+      paymentMethod,
+    } = req.body as {
+      email: string;
+      studentName?: string;
+      location?: string;
+      frequency?: string;
+      selectedDays?: string[];
+      startDate?: string;
+      paymentMethod?: string;
+    };
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    if (!resend) {
+      console.warn('RESEND_API_KEY not set; skipping email send.');
+      return res.status(200).json({ success: true }); // Don’t block the UX if email isn’t configured
+    }
+
+    const html = `
+      <h2>Baila Kids Registration Confirmation</h2>
+      <p>Thank you for registering${studentName ? `, ${studentName}` : ''}!</p>
+      <p><strong>Location:</strong> ${location ?? ''}</p>
+      <p><strong>Frequency:</strong> ${frequency ?? ''}</p>
+      <p><strong>Selected days:</strong> ${(selectedDays ?? []).join(', ')}</p>
+      <p><strong>First class:</strong> ${startDate ?? ''}</p>
+      <p><strong>Payment method:</strong> ${paymentMethod ?? ''}</p>
+    `;
+
+    await resend.emails.send({
+      from: 'Baila Kids <registration@bailakids.org>', 
+      to: email,
+      subject: 'Your Baila Kids Registration',
+      html,
     });
 
-
-    console.log('Resend response:', response);
-
-    if (response?.data?.id) {
-      return res.status(200).json({ success: true });
-    } else {
-      console.error('Resend error:', response.error);
-      throw new Error('Resend did not return a message ID.');
-    }
-  } catch (error: unknown) {
-    console.error('Email send error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({ success: false, error: errorMessage });
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('SendConfirmation API error:', err);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 }
