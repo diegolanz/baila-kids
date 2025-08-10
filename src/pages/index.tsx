@@ -129,25 +129,25 @@ export default function Home() {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  // Clean up leading/trailing spaces from inputs
+  // Clean & normalize spaces
   const cleanStudentName = studentName.trim().replace(/\s+/g, ' ');
   const cleanParentName = parentName.trim().replace(/\s+/g, ' ');
   const cleanEmail = email.trim();
   const cleanPhone = phone.trim();
 
-
-  // Basic required field check
+  // Require all basic fields
   if (!cleanStudentName || !cleanParentName || !cleanEmail || !cleanPhone) {
     setFormError('All fields are required.');
     return;
   }
 
-  const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+$/;
+  // Allow multiple last names but require at least two words
+  const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/;
   const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!nameRegex.test(cleanStudentName)) {
-    setFormError("Please enter the student's first and last name.");
+    setFormError("Please enter the student's full name (at least first and last).");
     return;
   }
 
@@ -158,7 +158,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   if (!nameRegex.test(cleanParentName)) {
-    setFormError("Please enter the parent's first and last name.");
+    setFormError("Please enter the parent's full name (at least first and last).");
     return;
   }
 
@@ -227,6 +227,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   setLocation(null);
   setIsSubmitting(false);
 };
+
 
 
 const resetForm = () => {
