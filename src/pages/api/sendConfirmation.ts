@@ -45,6 +45,7 @@ const baseWrap = (inner: string) => `
   </div>
 `;
 
+
 const registrantHTML = (p: RegistrationPayload) => baseWrap(`
   <h2 style="color:#d61f69;margin:0 0 8px">🎉 Registration received!</h2>
   <p>Hi ${p.parentName}, thanks for registering <strong>${p.studentName}</strong>.
@@ -59,7 +60,12 @@ const registrantHTML = (p: RegistrationPayload) => baseWrap(`
     <li>Day(s): ${p.selectedDays.join(', ')}</li>
     <li>Payment method: ${p.paymentMethod}</li>
   </ul>
+  <p style="margin-top:20px;color:#555;font-size:14px;line-height:1.4">
+    We’ll be reaching out with more details about your classes very soon.  
+    In the meantime, keep an eye on your inbox — we can’t wait to dance with you!
+  </p>
 `);
+
 
 const ownerHTML = (p: RegistrationPayload) => baseWrap(`
   <h3 style="color:#b11656;margin:0 0 12px">🗂️ New Registration</h3>
