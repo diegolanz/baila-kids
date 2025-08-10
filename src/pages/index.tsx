@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+// import { useTranslation } from 'next-i18next';
+// import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 // import '@/styles/registration.css'; // Local scoped CSS in /styles
 
@@ -78,7 +78,7 @@ function formatReadableDate(dateString: string | undefined): string {
 
 
 export default function Home() {
-  const { t, i18n } = useTranslation('common');
+  // const { t, i18n } = useTranslation('common');
   const [liabilityAccepted, setLiabilityAccepted] = useState(false);
   const [formError, setFormError] = useState('');
   const [location, setLocation] = useState<'KATY' | 'SUGARLAND' | null>(null);
