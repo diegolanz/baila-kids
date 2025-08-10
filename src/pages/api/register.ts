@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 // If you have a Prisma client, import it. Adjust path to your setup.
 import prisma from '@/lib/prisma'; // <-- change this import if your prisma client lives elsewhere
+import { Prisma, SchoolLocation, ClassFrequency, PaymentStatus } from '@prisma/client';
+
 
 type ApiResp = { success: boolean; error?: string };
 
@@ -58,22 +60,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // ---- write to DB ----
     if (prisma) {
       // Build data object explicitly; only include optional fields when present
-      const data: any = {
+     const data: Prisma.StudentCreateInput = {
         studentName,
         age,
         parentName,
         phone,
         email,
-        location,
-        frequency,
-        selectedDays,
-        startDate: start,
-        paymentStatus: 'PENDING',
+        location: location as SchoolLocation,                 // enum
+        frequency: frequency as ClassFrequency,               // enum
+        selectedDays,                                         // string[]
+        startDate: new Date(start),                           // Date, not string
+        paymentStatus: PaymentStatus.PENDING,                 // enum
+        paymentMethod: paymentMethod ?? null,                 // nullable
         liabilityAccepted: !!liabilityAccepted,
         waiverName: waiverSignature?.name ?? null,
         waiverAddress: waiverSignature?.address ?? null,
       };
-      if (paymentMethod) data.paymentMethod = paymentMethod;
+
 
       await prisma.student.create({ data });
     } else {
