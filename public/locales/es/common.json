@@ -1,0 +1,42 @@
+{
+  "welcome": "¡Bienvenidos a Baila Kids!",
+  "registration_received": "¡Registro recibido!",
+  "more_info": "Nos pondremos en contacto contigo con más información muy pronto. ¡Mantente atento!",
+  "title": "¡Bienvenidos al registro de clases de Baila Kids!",
+  "question_location": "Primero, ¿cuál es tu ubicación preferida?",
+  "question_frequency": "¿Con qué frecuencia quieres clases?",
+  "once_label": "1 día por semana",
+  "twice_label": "2 días por semana",
+  "choose_day": "Elige tu día (las clases comienzan la semana del 25 de agosto de 2025)",
+  "student_registration": "Registro del estudiante",
+  "placeholders": {
+    "student_name": "Nombre del estudiante",
+    "student_age": "Edad del estudiante",
+    "parent_name": "Nombre del padre/madre o tutor",
+    "phone": "Teléfono",
+    "email": "Correo electrónico"
+  },
+  "payment_legend": "Selecciona el método de pago:",
+  "payment_cash": "Efectivo",
+  "payment_zelle": "Zelle a Cristina Pantin 281-658-1140",
+  "payment_check": "Cheque",
+  "liability_accept": "ACEPTO Y RECONOZCO",
+  "summary": {
+    "total": "Total"
+  },
+  "register": "Registrar",
+  "submitting": "Enviando...",
+  "complete_title": "🎉 ¡Registro completo! 🎉",
+  "complete_text": "¡Gracias por registrarte! Hemos recibido tu información y te enviaremos un correo de confirmación muy pronto.",
+  "submit_another": "Enviar otra solicitud",
+  "errors": {
+    "student_name": "Por favor, ingrese el nombre y apellido del estudiante.",
+    "age_range": "Por favor, ingrese una edad válida entre 1 y 17 años.",
+    "parent_name": "Por favor, ingrese el nombre y apellido del padre/madre o tutor.",
+    "phone": "Por favor, ingrese un número de teléfono válido de 10 dígitos.",
+    "email": "Por favor, ingrese un correo electrónico válido.",
+    "payment_method": "Por favor, seleccione un método de pago.",
+    "liability": "Debe aceptar la exención de responsabilidad para continuar.",
+    "generic": "Algo salió mal. Por favor, inténtelo de nuevo."
+  }
+}

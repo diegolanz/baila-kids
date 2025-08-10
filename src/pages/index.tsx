@@ -278,6 +278,8 @@ const resetForm = () => {
       <>
       <div className="step">
         <h1 className="reg-title">Welcome to the Baila Kids class registration!</h1>
+        <h1 className="title-moreinfo">This registration is valid for Fall 2025 (14 weeks)</h1>
+        <h2 className="price-info">All prices listed below are the TOTAL amount for all 14 weeks</h2>
         <h2 className="questions">First, which is your preferred location?</h2>
         <div className="button-group">
           {(['KATY', 'SUGARLAND'] as const).map(loc => (
@@ -296,7 +298,7 @@ const resetForm = () => {
           </p> */}
           <div className="button-group">
             <button onClick={() => setFrequency('ONCE')} className={frequency === 'ONCE' ? 'active' : ''}>
-              1 Day / Week (${selectedDay ? prices[location][selectedDay] : '240'})
+              1 Day / Week (${selectedDay ? prices[location][selectedDay] : '245'})
             </button>
             <button onClick={() => setFrequency('TWICE')} className={frequency === 'TWICE' ? 'active' : ''}>
               2 Days / Week (${prices[location].both})

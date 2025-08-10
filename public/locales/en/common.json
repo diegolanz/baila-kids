@@ -1,0 +1,42 @@
+{
+  "welcome": "Welcome to Baila Kids!",
+  "registration_received": "Registration received!",
+  "more_info": "We will reach out with more information very soon, stay tuned!",
+  "title": "Welcome to the Baila Kids class registration!",
+  "question_location": "First, which is your preferred location?",
+  "question_frequency": "How often do you want classes?",
+  "once_label": "1 Day / Week",
+  "twice_label": "2 Days / Week",
+  "choose_day": "Choose your day (classes start the week of August 25th, 2025)",
+  "student_registration": "Student Registration",
+  "placeholders": {
+    "student_name": "Student Name",
+    "student_age": "Student Age",
+    "parent_name": "Parent/Guardian Name",
+    "phone": "Phone",
+    "email": "Email"
+  },
+  "payment_legend": "Select Payment Method:",
+  "payment_cash": "Cash",
+  "payment_zelle": "Zelle to Cristina Pantin 281-658-1140",
+  "payment_check": "Check",
+  "liability_accept": "I ACCEPT AND ACKNOWLEDGE",
+  "summary": {
+    "total": "Total"
+  },
+  "register": "Register",
+  "submitting": "Submitting...",
+  "complete_title": "🎉 Registration Complete! 🎉",
+  "complete_text": "Thank you for registering. We’ve received your information and will send you a confirmation email shortly!",
+  "submit_another": "Submit another application",
+  "errors": {
+    "student_name": "Please enter the student's first and last name.",
+    "age_range": "Please enter a valid student age between 1 and 17.",
+    "parent_name": "Please enter the parent's first and last name.",
+    "phone": "Please enter a valid 10-digit phone number.",
+    "email": "Please enter a valid email address.",
+    "payment_method": "Please select a payment method.",
+    "liability": "You must accept the liability disclaimer to continue.",
+    "generic": "Something went wrong. Please try again."
+  }
+}
