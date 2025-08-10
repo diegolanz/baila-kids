@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'next-i18next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+
 // import '@/styles/registration.css'; // Local scoped CSS in /styles
 
 
@@ -75,6 +78,7 @@ function formatReadableDate(dateString: string | undefined): string {
 
 
 export default function Home() {
+  const { t, i18n } = useTranslation('common');
   const [liabilityAccepted, setLiabilityAccepted] = useState(false);
   const [formError, setFormError] = useState('');
   const [location, setLocation] = useState<'KATY' | 'SUGARLAND' | null>(null);
@@ -122,15 +126,28 @@ export default function Home() {
 
   }, [formVisible]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
+
+  // Clean up leading/trailing spaces from inputs
+  const cleanStudentName = studentName.trim().replace(/\s+/g, ' ');
+  const cleanParentName = parentName.trim().replace(/\s+/g, ' ');
+  const cleanEmail = email.trim();
+  const cleanPhone = phone.trim();
+
+
+  // Basic required field check
+  if (!cleanStudentName || !cleanParentName || !cleanEmail || !cleanPhone) {
+    setFormError('All fields are required.');
+    return;
+  }
 
   const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+$/;
   const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!nameRegex.test(studentName)) {
-    setFormError('Please enter the student\'s first and last name.');
+  if (!nameRegex.test(cleanStudentName)) {
+    setFormError("Please enter the student's first and last name.");
     return;
   }
 
@@ -140,17 +157,17 @@ export default function Home() {
     return;
   }
 
-  if (!nameRegex.test(parentName)) {
-    setFormError('Please enter the parent\'s first and last name.');
+  if (!nameRegex.test(cleanParentName)) {
+    setFormError("Please enter the parent's first and last name.");
     return;
   }
 
-  if (!phoneRegex.test(phone)) {
+  if (!phoneRegex.test(cleanPhone)) {
     setFormError('Please enter a valid 10-digit phone number.');
     return;
   }
 
-  if (!emailRegex.test(email)) {
+  if (!emailRegex.test(cleanEmail)) {
     setFormError('Please enter a valid email address.');
     return;
   }
@@ -173,29 +190,25 @@ export default function Home() {
   const startDate = new Date(startDates[location!][selectedDays[0]]);
 
   const payload: RegistrationPayload = {
-    studentName,
+    studentName: cleanStudentName,
     age: parsedAge,
-    parentName,
-    phone,
-    email,
+    parentName: cleanParentName,
+    phone: cleanPhone,
+    email: cleanEmail,
     location: location!,
     frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
     selectedDays,
     startDate: startDate.toISOString(),
     liabilityAccepted: true,
     paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
-    waiverSignature: { name: parentName, address: email },
+    waiverSignature: { name: cleanParentName, address: cleanEmail },
   };
-
 
   const res = await fetch('/api/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
-
-
 
   const data = await res.json();
 
@@ -209,10 +222,12 @@ export default function Home() {
   } else {
     setFormError('Something went wrong. Please try again.');
   }
+
   setFormVisible(false);
   setLocation(null);
   setIsSubmitting(false);
 };
+
 
 const resetForm = () => {
   setSubmitted(false);
