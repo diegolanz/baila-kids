@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-// If you have a Prisma client, import it. Adjust path to your setup.
-import prisma from '@/lib/prisma'; // <-- change this import if your prisma client lives elsewhere
+import prisma from '@/lib/prisma'; 
 import { Prisma, SchoolLocation, ClassFrequency, PaymentStatus } from '@prisma/client';
 
 
