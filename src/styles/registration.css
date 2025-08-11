@@ -553,6 +553,62 @@ input[type="checkbox"] { accent-color: #f26b7d; }
 }
 
 
+/* Match dropdown to other form inputs */
+select.form-input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+  color: #333;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  cursor: pointer;
+}
+
+/* Optional: custom arrow for dropdown */
+select.form-input {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='gray' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+}
+
+select.form-input:focus {
+  outline: none;
+  border-color: #ff4d91;
+  box-shadow: 0 0 0 2px rgba(255, 77, 145, 0.2);
+}
+
+
+.selected-days-display {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #ffffff;
+  background: #852a4d;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  border: 1px solid #ddd;
+  border-color: #ff0062;
+  border-width: 5px;
+}
+
+.button-group button.active + .selected-days-display {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+
 
 
 

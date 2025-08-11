@@ -13,7 +13,7 @@ type RegistrationPayload = {
   location: LocationKey;
   frequency: 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
   selectedDays: DayKey[];
-  startDate: string; // ISO
+  startDate: string; // now always "YYYY-MM-DD"
   liabilityAccepted: boolean;
   paymentMethod: 'Cash' | 'Zelle' | 'Check';
   waiverSignature?: { name?: string; address?: string };
@@ -23,18 +23,28 @@ type ApiResp = { success: boolean; error?: string };
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+function ordinal(n: number) {
+  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+function formatReadableDateYMDWithWeekday(ymd: string, timeZone = 'America/Chicago') {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d + 1));
+  const weekday = utc.toLocaleDateString('en-US', { weekday: 'long', timeZone });
+  const month = utc.toLocaleDateString('en-US', { month: 'long', timeZone });
+  return `${weekday}, ${month} ${ordinal(d)}, ${y}`;
+}
 
 const baseWrap = (inner: string) => `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #f7d4e1;overflow:hidden">
-    <div style="background:#ffe9f2;padding:18px 22px">
-      <img alt="Baila Kids" src="https://via.placeholder.com/160x36?text=Baila+Kids" style="display:block;height:36px"/>
+    <div style="background:#ff4d91;padding:18px 22px;text-align:center">
+      <img alt="Baila Kids" src="public\bailakids\logo.png" style="display:block;height:36px;margin:0 auto"/>
     </div>
     <div style="padding:22px">
       ${inner}
@@ -45,55 +55,57 @@ const baseWrap = (inner: string) => `
   </div>
 `;
 
+const registrantHTML = (p: RegistrationPayload) => {
+  const formattedDate = formatReadableDateYMDWithWeekday(p.startDate);
+  return baseWrap(`
+    <h2 style="color:#d61f69;margin:0 0 8px">🎉 Registration received!</h2>
+    <p>Hi ${p.parentName}, thanks for registering <strong>${p.studentName}</strong>.
+       We’re excited to see you on <strong>${formattedDate}</strong>.</p>
+    <ul style="line-height:1.5">
+      <li>Student: ${p.studentName} (Age ${p.age})</li>
+      <li>Parent/Guardian: ${p.parentName}</li>
+      <li>Phone: ${p.phone}</li>
+      <li>Email: ${p.email}</li>
+      <li>Location: ${p.location}</li>
+      <li>Frequency: ${p.frequency === 'ONCE_A_WEEK' ? 'Once a week' : 'Twice a week'}</li>
+      <li>Day(s): ${p.selectedDays.join(', ')}</li>
+      <li>
+          Payment method: ${p.paymentMethod}
+          ${p.paymentMethod === 'Zelle'
+            ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
+            : ''
+          }
+      </li>
+    </ul>
+    <p style="margin-top:20px;color:#555;font-size:14px;line-height:1.4">
+      We’ll be reaching out with more details about your classes very soon. Have any questions? Please email <strong>cristinapantin@yahoo.com</strong> and include the student's name in the subject line.
+      In the meantime, keep an eye on your inbox — we can’t wait to dance with you!
+    </p>
+  `);
+};
 
-const registrantHTML = (p: RegistrationPayload) => baseWrap(`
-  <h2 style="color:#d61f69;margin:0 0 8px">🎉 Registration received!</h2>
-  <p>Hi ${p.parentName}, thanks for registering <strong>${p.studentName}</strong>.
-     We’re excited to see you on <strong>${fmtDate(p.startDate)}</strong>.</p>
-  <ul>
-    <li>Student: ${p.studentName} (Age ${p.age})</li>
-    <li>Parent/Guardian: ${p.parentName}</li>
-    <li>Phone: ${p.phone}</li>
-    <li>Email: ${p.email}</li>
-    <li>Location: ${p.location}</li>
-    <li>Frequency: ${p.frequency === 'ONCE_A_WEEK' ? 'Once a week' : 'Twice a week'}</li>
-    <li>Day(s): ${p.selectedDays.join(', ')}</li>
-    <li>
-        Payment method: ${p.paymentMethod}
+const ownerHTML = (p: RegistrationPayload) => {
+  const formattedDate = formatReadableDateYMDWithWeekday(p.startDate);
+  return baseWrap(`
+    <h3 style="color:#b11656;margin:0 0 12px">🗂️ New Registration</h3>
+    <ul style="line-height:1.5">
+      <li>Student: ${p.studentName} (Age ${p.age})</li>
+      <li>Parent: ${p.parentName}</li>
+      <li>Contact: ${p.phone} • ${p.email}</li>
+      <li>Location: ${p.location}</li>
+      <li>Frequency: ${p.frequency === 'ONCE_A_WEEK' ? 'Once a week' : 'Twice a week'}</li>
+      <li>Day(s): ${p.selectedDays.join(', ')}</li>
+      <li>Start: ${formattedDate}</li>
+      <li>
+        Payment: ${p.paymentMethod}
         ${p.paymentMethod === 'Zelle'
-          ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
+          ? ` – Instructions sent to parent in their confirmation email`
           : ''
         }
-    </li>
-
-  </ul>
-  <p style="margin-top:20px;color:#555;font-size:14px;line-height:1.4">
-    We’ll be reaching out with more details about your classes very soon. Have any questions? please email <strong>cristinapantin@yahoo.com</strong> and include the students name in the subject line.
-    In the meantime, keep an eye on your inbox — we can’t wait to dance with you!
-  </p>
-`);
-
-
-const ownerHTML = (p: RegistrationPayload) => baseWrap(`
-  <h3 style="color:#b11656;margin:0 0 12px">🗂️ New Registration</h3>
-  <ul>
-    <li>Student: ${p.studentName} (Age ${p.age})</li>
-    <li>Parent: ${p.parentName}</li>
-    <li>Contact: ${p.phone} • ${p.email}</li>
-    <li>Location: ${p.location}</li>
-    <li>Frequency: ${p.frequency === 'ONCE_A_WEEK' ? 'Once a week' : 'Twice a week'}</li>
-    <li>Day(s): ${p.selectedDays.join(', ')}</li>
-    <li>Start: ${fmtDate(p.startDate)}</li>
-    <li>
-      Payment: ${p.paymentMethod}
-      ${p.paymentMethod === 'Zelle'
-        ? ` – Instructions sent to parent in their confirmation email`
-        : ''
-      }
-    </li>
-
-  </ul>
-`);
+      </li>
+    </ul>
+  `);
+};
 
 export default async function handler(
   req: NextApiRequest,

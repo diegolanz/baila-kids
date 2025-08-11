@@ -186,7 +186,15 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const selectedDays: DayKey[] =
     frequency === 'ONCE' ? [selectedDay!] : [...daysMap[location!]];
-  const startDate = new Date(startDates[location!][selectedDays[0]]);
+
+  // pick correct start date string
+  const chosenStartDate =
+    frequency === 'ONCE'
+      ? startDates[location!][selectedDay!]
+      : startDates[location!][daysMap[location!][0]]; // first day for 2-day schedule
+
+  const startDateStr = chosenStartDate;
+
 
   const payload: RegistrationPayload = {
     studentName: cleanStudentName,
@@ -197,7 +205,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     location: location!,
     frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
     selectedDays,
-    startDate: startDate.toISOString(),
+    startDate: startDateStr,
     liabilityAccepted: true,
     paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
     waiverSignature: { name: cleanParentName, address: cleanEmail },
@@ -301,6 +309,11 @@ const resetForm = () => {
             <button onClick={() => setFrequency('TWICE')} className={frequency === 'TWICE' ? 'active' : ''}>
               2 Days / Week (${prices[location].both})
             </button>
+            {frequency === 'TWICE' && location && (
+              <div className="selected-days-display">
+                {daysMap[location].join(' and ')} selected
+              </div>
+            )}
           </div>
 
         </div>
@@ -338,7 +351,20 @@ const resetForm = () => {
           <h2 className="student-reg-title">Student Registration</h2>
           <form onSubmit={handleSubmit}>
             <input type="text" placeholder="Student Name" required value={studentName} onChange={e => setStudentName(e.target.value)} />
-            <input placeholder="Student Age" required type="number" value={age} onChange={e => setAge(e.target.value)} />
+            <select
+              className="form-input"
+              required
+              value={age}
+              onChange={e => setAge(e.target.value)}
+            >
+              <option value="">Select Age</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+
+
             <input type="text" placeholder="Parent/Guardian Name" required value={parentName} onChange={e => setParentName(e.target.value)} />
             <input type="text" placeholder="Phone" required value={phone} onChange={e => setPhone(e.target.value)} />
             <input placeholder="Email" required type="email" value={email} onChange={e => setEmail(e.target.value)} />
@@ -410,6 +436,12 @@ const resetForm = () => {
                     Payment method: </strong>{paymentMethod} 
                     {paymentMethod === 'Zelle' && (
                       <> (further instructions in confirmation email)</>
+                    )}
+                    {paymentMethod === ('Cash') && (
+                      <> (payment must be made before first day of classes)</>
+                    )}
+                    {paymentMethod === ('Check') && (
+                      <> (payment must be made before first day of classes)</>
                     )}
                   </li>                  
                   <li><strong  className='final-total'>Total: ${calculateTotal()}</strong></li>
