@@ -44,7 +44,12 @@ function formatReadableDateYMDWithWeekday(ymd: string, timeZone = 'America/Chica
 const baseWrap = (inner: string) => `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:620px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #f7d4e1;overflow:hidden">
     <div style="background:#ff4d91;padding:18px 22px;text-align:center">
-      <img alt="Baila Kids" src="public\bailakids\logo.png" style="display:block;height:36px;margin:0 auto"/>
+    <img
+      alt="Baila Kids"
+      src="https://www.bailakids.org/bailakids/logo.png"
+      style="display:block;height:100%;margin:0 auto"
+    />
+
     </div>
     <div style="padding:22px">
       ${inner}
@@ -73,6 +78,14 @@ const registrantHTML = (p: RegistrationPayload) => {
           Payment method: ${p.paymentMethod}
           ${p.paymentMethod === 'Zelle'
             ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
+            : ''
+          }
+          ${p.paymentMethod === 'Cash'
+            ? `<br/><strong>Please make sure payment is complete before the first day of classes (${p.startDate})</strong>`
+            : ''
+          }
+          ${p.paymentMethod === 'Check'
+            ? `<br/><strong>Please make sure payment is complete before the first day of classes (${p.startDate})</strong>`
             : ''
           }
       </li>

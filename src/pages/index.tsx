@@ -307,7 +307,9 @@ const resetForm = () => {
               1 Day / Week (${selectedDay ? prices[location][selectedDay] : '245'})
             </button>
             <button onClick={() => setFrequency('TWICE')} className={frequency === 'TWICE' ? 'active' : ''}>
-              2 Days / Week (${prices[location].both})
+              2 Days / Week <span className="price-text">(${prices[location].both})</span>
+                <span className="days-text">{daysMap[location].join(' and ')}</span>
+
             </button>
             {frequency === 'TWICE' && location && (
               <div className="selected-days-display">
@@ -357,7 +359,7 @@ const resetForm = () => {
               value={age}
               onChange={e => setAge(e.target.value)}
             >
-              <option value="">Select Age</option>
+              <option value="">Student Age</option>
               <option value="3">3</option>
               <option value="4">4</option>
               <option value="5">5</option>
@@ -463,7 +465,7 @@ const resetForm = () => {
         <div className="confirmation">
           <h2 className="confirmation-title">🎉 Registration Complete! 🎉</h2>
           <p className="confirmation-text">
-            Thank you for registering. We’ve received your information and will send you a confirmation email shortly!
+            Thank you for registering. We’ve received your information and will send you a confirmation email shortly! <br/> <strong></strong>(Check your spam folder)
           </p>
           <button className="reset-button" onClick={resetForm}>
             Submit another application

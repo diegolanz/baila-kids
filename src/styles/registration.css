@@ -607,6 +607,15 @@ select.form-input:focus {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.price-text, .days-text {
+  display: block;
+}
+
+.days-text {
+  font-size: 14px;
+  color: #ffffff;
+}
+
 
 
 
