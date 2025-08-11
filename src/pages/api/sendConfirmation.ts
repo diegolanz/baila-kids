@@ -61,14 +61,14 @@ const registrantHTML = (p: RegistrationPayload) => baseWrap(`
     <li>
         Payment method: ${p.paymentMethod}
         ${p.paymentMethod === 'Zelle'
-          ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>cristinapantin@yahoo.com</strong> or <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
+          ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
           : ''
         }
     </li>
 
   </ul>
   <p style="margin-top:20px;color:#555;font-size:14px;line-height:1.4">
-    We’ll be reaching out with more details about your classes very soon.  
+    We’ll be reaching out with more details about your classes very soon. Have any questions? please email <strong>cristinapantin@yahoo.com</strong> and include the students name in the subject line.
     In the meantime, keep an eye on your inbox — we can’t wait to dance with you!
   </p>
 `);

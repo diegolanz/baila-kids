@@ -87,7 +87,6 @@ export default function Home() {
   const [formVisible, setFormVisible] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showNote, setShowNote] = useState(false);
 
   const [studentName, setStudentName] = useState('');
   const [age, setAge] = useState('');
@@ -244,7 +243,6 @@ const resetForm = () => {
   setPaymentMethod('');
   setLiabilityAccepted(false);
   setFormError('');
-  setShowNote(false);
 };
 
 
@@ -310,7 +308,7 @@ const resetForm = () => {
 
       {location && frequency === 'ONCE' && (
         <div className="step fade-in" ref={dayRef}>
-          <h2 className="questions">Choose your day (classes start the week of August 25th,2025)</h2>
+          <h2 className="questions">Choose your day of the week (classes start the week of August 25th,2025)</h2>
             <div className="button-group">
 
               {daysMap[location].map(day => (
@@ -320,22 +318,17 @@ const resetForm = () => {
                       onClick={() => setSelectedDay(day)}
                       className={selectedDay === day ? 'active' : ''}
                     >
-                      {day} (${prices[location][day as DayKey]})
+                      {day}
+                      {location === 'SUGARLAND' && day === 'Monday' && (
+                        <span style={{ fontSize: '0.75rem', display: 'block', marginTop: '4px', color: '#fff' }}>
+                          No class on Memorial Day!
+                        </span>
+                      )}
                     </button>
-                    {location === 'SUGARLAND' && day === 'Monday' && (
-                      <button
-                        onClick={() => setShowNote(prev => !prev)}
-                        title="Why is Monday cheaper?"
-                        className="info-circle"
-                      >
-                        ?
-                      </button>
-                    )}
                   </div>
                 </div>
               ))}
 
-              {showNote && <p className="note">No class on memorial day!</p>}
             </div>
         </div>
       )}
@@ -419,7 +412,7 @@ const resetForm = () => {
                       <> (further instructions in confirmation email)</>
                     )}
                   </li>                  
-                  <li><strong  className='final-total'>Total:</strong> ${calculateTotal()}</li>
+                  <li><strong  className='final-total'>Total: ${calculateTotal()}</strong></li>
                 </ul>
               </div>
             )}

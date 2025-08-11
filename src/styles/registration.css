@@ -544,6 +544,13 @@ input[type="checkbox"] { accent-color: #f26b7d; }
   padding: 0;
 }
 
+.day-note {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  color: #ffeef7; /* Slightly lighter pink-white */
+  font-weight: normal;
+}
 
 
 
