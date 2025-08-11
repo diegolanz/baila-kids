@@ -58,7 +58,14 @@ const registrantHTML = (p: RegistrationPayload) => baseWrap(`
     <li>Location: ${p.location}</li>
     <li>Frequency: ${p.frequency === 'ONCE_A_WEEK' ? 'Once a week' : 'Twice a week'}</li>
     <li>Day(s): ${p.selectedDays.join(', ')}</li>
-    <li>Payment method: ${p.paymentMethod}</li>
+    <li>
+        Payment method: ${p.paymentMethod}
+        ${p.paymentMethod === 'Zelle'
+          ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>cristinapantin@yahoo.com</strong> or <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
+          : ''
+        }
+    </li>
+
   </ul>
   <p style="margin-top:20px;color:#555;font-size:14px;line-height:1.4">
     We’ll be reaching out with more details about your classes very soon.  
@@ -77,7 +84,14 @@ const ownerHTML = (p: RegistrationPayload) => baseWrap(`
     <li>Frequency: ${p.frequency === 'ONCE_A_WEEK' ? 'Once a week' : 'Twice a week'}</li>
     <li>Day(s): ${p.selectedDays.join(', ')}</li>
     <li>Start: ${fmtDate(p.startDate)}</li>
-    <li>Payment: ${p.paymentMethod}</li>
+    <li>
+      Payment: ${p.paymentMethod}
+      ${p.paymentMethod === 'Zelle'
+        ? ` – Instructions sent to parent in their confirmation email`
+        : ''
+      }
+    </li>
+
   </ul>
 `);
 

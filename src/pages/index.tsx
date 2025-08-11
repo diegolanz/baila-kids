@@ -355,7 +355,7 @@ const resetForm = () => {
             <fieldset>
               <legend>Select Payment Method:</legend>
               <label><input type="radio" name="payment" value="Cash" onChange={e => setPaymentMethod(e.target.value)} required /> Cash</label>
-              <label><input type="radio" name="payment" value="Zelle" onChange={e => setPaymentMethod(e.target.value)} /> Zelle to Cristina Pantin 281-658-1140</label>
+              <label><input type="radio" name="payment" value="Zelle" onChange={e => setPaymentMethod(e.target.value)} /> Zelle</label>
               <label><input type="radio" name="payment" value="Check" onChange={e => setPaymentMethod(e.target.value)} /> Check</label>
             </fieldset>
 
@@ -413,7 +413,12 @@ const resetForm = () => {
                   <li><strong>Parent:</strong> {parentName}</li>
                   <li><strong>Phone:</strong> {phone}</li>
                   <li><strong>Email:</strong> {email}</li>
-                  <li><strong>Payment Method:</strong> {paymentMethod}</li>
+                  <li><strong>
+                    Payment method: </strong>{paymentMethod} 
+                    {paymentMethod === 'Zelle' && (
+                      <> (further instructions in confirmation email)</>
+                    )}
+                  </li>                  
                   <li><strong  className='final-total'>Total:</strong> ${calculateTotal()}</li>
                 </ul>
               </div>
