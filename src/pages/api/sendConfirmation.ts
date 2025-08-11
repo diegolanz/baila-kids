@@ -47,7 +47,7 @@ const baseWrap = (inner: string) => `
     <img
       alt="Baila Kids"
       src="https://www.bailakids.org/bailakids/logo.png"
-      style="display:block;height:100%;margin:0 auto"
+      style="display:block;height:40%;margin:0 auto"
     />
 
     </div>
