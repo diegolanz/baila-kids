@@ -145,10 +145,10 @@ const handleSubmit = async (e: React.FormEvent) => {
   const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!nameRegex.test(cleanStudentName)) {
-    setFormError("Please enter the student's full name (at least first and last).");
-    return;
-  }
+  // if (!nameRegex.test(cleanStudentName)) {
+  //   setFormError("Please enter the student's full name (at least first and last).");
+  //   return;
+  // }
 
   const parsedAge = parseInt(age);
   if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 17) {
@@ -156,10 +156,10 @@ const handleSubmit = async (e: React.FormEvent) => {
     return;
   }
 
-  if (!nameRegex.test(cleanParentName)) {
-    setFormError("Please enter the parent's full name (at least first and last).");
-    return;
-  }
+  // if (!nameRegex.test(cleanParentName)) {
+  //   setFormError("Please enter the parent's full name (at least first and last).");
+  //   return;
+  // }
 
   if (!phoneRegex.test(cleanPhone)) {
     setFormError('Please enter a valid 10-digit phone number.');
@@ -352,7 +352,7 @@ const resetForm = () => {
         <div className="step fade-in" ref={formRef}>
           <h2 className="student-reg-title">Student Registration</h2>
           <form onSubmit={handleSubmit}>
-            <input type="text" placeholder="Student Name" required value={studentName} onChange={e => setStudentName(e.target.value)} />
+            <input type="text" placeholder="Student's FIRST and LAST Name" required value={studentName} onChange={e => setStudentName(e.target.value)} />
             <select
               className="form-input"
               required
@@ -367,7 +367,7 @@ const resetForm = () => {
             </select>
 
 
-            <input type="text" placeholder="Parent/Guardian Name" required value={parentName} onChange={e => setParentName(e.target.value)} />
+            <input type="text" placeholder="Parent/Guardian FIRST and LAST Name" required value={parentName} onChange={e => setParentName(e.target.value)} />
             <input type="text" placeholder="Phone" required value={phone} onChange={e => setPhone(e.target.value)} />
             <input placeholder="Email" required type="email" value={email} onChange={e => setEmail(e.target.value)} />
 
