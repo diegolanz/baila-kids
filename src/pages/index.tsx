@@ -141,7 +141,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   // Allow multiple last names but require at least two words
-  const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/;
+  // const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/;
   const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
