@@ -82,12 +82,12 @@ const registrantHTML = (p: RegistrationPayload) => {
           }
           ${p.paymentMethod === 'Cash'
             ? `<br/><strong>Please make sure payment is complete before the first day of classes (${p.startDate})</strong>
-                <br/><strong>Deliver payments in an envelope to Spanish Schoolhouse</strong>`
+                <br/><strong>Please drop off payments in an envelope to the Spanish Schoolhouse front office</strong>`
             : ''
           }
           ${p.paymentMethod === 'Check'
             ? `<br/><strong>Please make sure payment is complete before the first day of classes (${p.startDate})</strong>
-                            <br/><strong>Deliver payments in an envelope to Spanish Schoolhouse</strong>`
+                <br/><strong>Please drop off payments in an envelope to the Spanish Schoolhouse front office</strong>`
 
             : ''
           }
