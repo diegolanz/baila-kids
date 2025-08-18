@@ -617,6 +617,54 @@ select.form-input:focus {
 }
 
 
+/* Inside the day buttons */
+.day-label {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.1;
+}
+
+.spot-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.95;
+  color: white;
+}
+
+.soldout-note {
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  font-weight: 600;
+  color: white; /* red-ish */
+}
+
+
+/* Small helper for your extra notice */
+.mini-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+/* Sold-out look */
+button.sold-out {
+  background-color: #111 !important;
+  color: #fff !important;
+  border-color: #000 !important;
+  opacity: 0.85;
+}
+
+button.sold-out .spot-note {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+
+
 
 
 

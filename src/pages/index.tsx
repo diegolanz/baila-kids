@@ -7,6 +7,13 @@ import { useState, useRef, useEffect } from 'react';
 
 // Utility types
 
+// add near other types at the top
+
+const MAX_CLASS_SIZE = 21;
+
+type Counts = Record<LocationKey, Record<DayKey, number>>;
+
+
 const daysMap = {
   KATY: ['Tuesday', 'Wednesday'],
   SUGARLAND: ['Monday', 'Thursday'],
@@ -99,11 +106,56 @@ export default function Home() {
   const dayRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  const [classCounts, setClassCounts] = useState<Counts>({
+    KATY: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
+    SUGARLAND: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
+  });
+
+  const fetchCounts = async () => {
+    try {
+      const r = await fetch('/api/classCounts');
+      const j = await r.json();
+      if (j?.counts) setClassCounts(j.counts);
+    } catch (e) {
+      console.error('Failed to fetch class counts', e);
+    }
+  };
+
+  useEffect(() => { fetchCounts(); }, []);
+
+  const remainingFor = (loc: LocationKey, day: DayKey) =>
+    Math.max(0, MAX_CLASS_SIZE - (classCounts[loc]?.[day] ?? 0));
+
+  const isSoldOut = (loc: LocationKey, day: DayKey) => remainingFor(loc, day) === 0;
+
+  const lowSpotsMsg = (loc: LocationKey, day: DayKey) => {
+    const r = remainingFor(loc, day);
+    return r > 0 && r <= 5 ? `Hurry! only ${r} spot${r === 1 ? '' : 's'} left!` : '';
+  };
+
+  // If either day at a location is sold out, block the TWICE option
+  const twoDaysUnavailable = (loc: LocationKey | null) =>
+    loc ? daysMap[loc].some(d => isSoldOut(loc, d)) : false;
+
+
+
+
+
+
   useEffect(() => {
     if (location && frequencyRef.current) {
       frequencyRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [location]);
+
+  const soldOutDaysMsg = (loc: LocationKey | null) => {
+  if (!loc) return '';
+  const sold = daysMap[loc].filter(d => isSoldOut(loc, d));
+  if (sold.length === 0) return '';
+  if (sold.length === daysMap[loc].length) return 'Both days sold out';
+  return sold.join(' and ') + ' sold out';
+};
+
 
   useEffect(() => {
     if (frequency === 'ONCE' && dayRef.current) {
@@ -226,6 +278,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       body: JSON.stringify(payload),
     });
     setSubmitted(true);
+    fetchCounts();
+
   } else {
     setFormError('Something went wrong. Please try again.');
   }
@@ -306,11 +360,20 @@ const resetForm = () => {
             <button onClick={() => setFrequency('ONCE')} className={frequency === 'ONCE' ? 'active' : ''}>
               1 Day / Week (${selectedDay ? prices[location][selectedDay] : '245'})
             </button>
-            <button onClick={() => setFrequency('TWICE')} className={frequency === 'TWICE' ? 'active' : ''}>
-              2 Days / Week <span className="price-text">(${prices[location].both})</span>
+              <button
+                onClick={() => setFrequency('TWICE')}
+                className={frequency === 'TWICE' ? 'active' : ''}
+                disabled={twoDaysUnavailable(location)}
+              >
+                2 Days / Week <span className="price-text">(${prices[location].both})</span>
                 <span className="days-text">{daysMap[location].join(' and ')}</span>
 
-            </button>
+                {/* Sold-out notice */}
+                {location && soldOutDaysMsg(location) && (
+                  <span className="soldout-note">{soldOutDaysMsg(location)}</span>
+                )}
+              </button>
+
             {frequency === 'TWICE' && location && (
               <div className="selected-days-display">
                 {daysMap[location].join(' and ')} selected
@@ -331,13 +394,21 @@ const resetForm = () => {
                   <div className="day-option">
                     <button
                       onClick={() => setSelectedDay(day)}
-                      className={selectedDay === day ? 'active' : ''}
+                      className={`${selectedDay === day ? 'active' : ''} ${isSoldOut(location, day) ? 'sold-out' : ''}`}
+                      disabled={isSoldOut(location, day)}
                     >
-                      {day}
+                      <span className="day-label">{day}</span>
+
+                      {/* Spots logic */}
+                      <span className="spot-note">
+                        {isSoldOut(location, day)
+                          ? 'Sold out'
+                          : lowSpotsMsg(location, day)}
+                      </span>
+
+                      {/* Optional notice you already had */}
                       {location === 'SUGARLAND' && day === 'Monday' && (
-                        <span style={{ fontSize: '0.75rem', display: 'block', marginTop: '4px', color: '#fff' }}>
-                          No class on Memorial Day!
-                        </span>
+                        <span className="mini-note">No class on Memorial Day!</span>
                       )}
                     </button>
                   </div>
