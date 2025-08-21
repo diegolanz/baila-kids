@@ -359,7 +359,9 @@ const handleSubmit = async (e: React.FormEvent) => {
   setLocation(null);
   setIsSubmitting(false);
 };
-
+const handleWaitlistDayChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  setWaitlistDay(e.target.value as DayKey | '');
+};
 
 
 const resetForm = () => {
@@ -666,9 +668,10 @@ useEffect(() => {
           ) : (
             <select
               value={waitlistDay}
-              onChange={e => setWaitlistDay(e.target.value as any)}
+              onChange={handleWaitlistDayChange}
               required
             >
+
               <option value="">Choose a day</option>
               {waitlistLoc && daysMap[waitlistLoc]
                 .filter(d => isSoldOut(waitlistLoc, d))
