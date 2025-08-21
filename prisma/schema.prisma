@@ -45,3 +45,17 @@ enum PaymentStatus {
   PAID
   FAILED
 }
+
+model WaitingList {
+  id          String         @id @default(uuid())
+  studentName String
+  age         Int
+  parentName  String
+  phone       String
+  email       String
+  location    SchoolLocation
+  requestedDay String        // the day they wanted but was full
+  notes       String?        // optional message
+  createdAt   DateTime       @default(now())
+}
+
