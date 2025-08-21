@@ -95,6 +95,20 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Waitlist UI state
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistLoc, setWaitlistLoc] = useState<LocationKey | null>(null);
+  const [waitlistDay, setWaitlistDay] = useState<DayKey | ''>('');
+  const [wlStudentName, setWlStudentName] = useState('');
+  const [wlAge, setWlAge] = useState('');
+  const [wlParent, setWlParent] = useState('');
+  const [wlPhone, setWlPhone] = useState('');
+  const [wlEmail, setWlEmail] = useState('');
+  const [wlNotes, setWlNotes] = useState('');
+  const [wlSubmitting, setWlSubmitting] = useState(false);
+  const [wlMsg, setWlMsg] = useState<string>('');
+
+
   const [studentName, setStudentName] = useState('');
   const [age, setAge] = useState('');
   const [parentName, setParentName] = useState('');
@@ -110,6 +124,63 @@ export default function Home() {
     KATY: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
     SUGARLAND: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
   });
+
+  const openWaitlist = (loc: LocationKey, day?: DayKey) => {
+    setWaitlistLoc(loc);
+    setWaitlistDay(day ?? ''); // '' means choose from dropdown in the sheet
+    setWaitlistOpen(true);
+    setWlMsg('');
+  };
+
+  const closeWaitlist = () => {
+    setWaitlistOpen(false);
+    setWlStudentName(''); setWlAge(''); setWlParent('');
+    setWlPhone(''); setWlEmail(''); setWlNotes(''); setWlMsg('');
+  };
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!waitlistLoc) return;
+
+  const requestedDay = waitlistDay || (location ? daysMap[waitlistLoc].find(d => isSoldOut(waitlistLoc, d)) : '');
+
+  if (!requestedDay) {
+    setWlMsg('Please choose a day.');
+    return;
+  }
+
+  setWlSubmitting(true);
+  try {
+    const resp = await fetch('/api/waitList', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentName: wlStudentName.trim(),
+        age: Number(wlAge || 0),
+        parentName: wlParent.trim(),
+        phone: wlPhone.trim(),
+        email: wlEmail.trim(),
+        location: waitlistLoc,
+        requestedDay,
+        notes: wlNotes.trim(),
+      })
+    });
+    const j = await resp.json();
+    if (j.success) {
+      setWlMsg('You’re on the list! We’ll email you as soon as we have information on more classes and dates! 🎉');
+      // optional: close after a short delay
+      // setTimeout(closeWaitlist, 1500);
+    } else {
+      setWlMsg(j.error || 'Something went wrong. Please try again.');
+    }
+  } catch {
+    setWlMsg('Network error. Please try again.');
+  } finally {
+    setWlSubmitting(false);
+  }
+};
+
+
 
   const fetchCounts = async () => {
     try {
@@ -307,6 +378,14 @@ const resetForm = () => {
   setFormError('');
 };
 
+useEffect(() => {
+  if (waitlistOpen) {
+    document.body.classList.add('modal-open');
+  } else {
+    document.body.classList.remove('modal-open');
+  }
+  return () => document.body.classList.remove('modal-open');
+}, [waitlistOpen]);
 
 
   const calculateTotal = () => {
@@ -389,31 +468,41 @@ const resetForm = () => {
           <h2 className="questions">Choose your day of the week (classes start the week of August 25th,2025)</h2>
             <div className="button-group">
 
-              {daysMap[location].map(day => (
-                <div className="day-option-wrapper" key={day}>
-                  <div className="day-option">
+            {daysMap[location].map(day => (
+              <div className="day-option-wrapper" key={day}>
+                <div className="day-option">
+                  <button
+                    onClick={() => setSelectedDay(day)}
+                    className={`${selectedDay === day ? 'active' : ''} ${isSoldOut(location, day) ? 'sold-out' : ''}`}
+                    disabled={isSoldOut(location, day)}
+                  >
+                    <span className="day-label">{day}</span>
+
+                    {/* Spots logic */}
+                    <span className="spot-note">
+                      {isSoldOut(location, day) ? 'Sold out' : lowSpotsMsg(location, day)}
+                    </span>
+
+                    {/* Optional notice */}
+                    {location === 'SUGARLAND' && day === 'Monday' && (
+                      <span className="mini-note">No class on Memorial Day!</span>
+                    )}
+                  </button>
+
+                  {/* <-- Place the waitlist button OUTSIDE the main button */}
+                  {isSoldOut(location, day) && (
                     <button
-                      onClick={() => setSelectedDay(day)}
-                      className={`${selectedDay === day ? 'active' : ''} ${isSoldOut(location, day) ? 'sold-out' : ''}`}
-                      disabled={isSoldOut(location, day)}
+                      type="button"
+                      className="waitlist-btn"
+                      onClick={() => openWaitlist(location, day)}
+                      aria-label={`Join waitlist for ${day} at ${location}`}
                     >
-                      <span className="day-label">{day}</span>
-
-                      {/* Spots logic */}
-                      <span className="spot-note">
-                        {isSoldOut(location, day)
-                          ? 'Sold out'
-                          : lowSpotsMsg(location, day)}
-                      </span>
-
-                      {/* Optional notice you already had */}
-                      {location === 'SUGARLAND' && day === 'Monday' && (
-                        <span className="mini-note">No class on Memorial Day!</span>
-                      )}
+                      Join waitlist
                     </button>
-                  </div>
+                  )}
                 </div>
-              ))}
+              </div>
+            ))}
 
             </div>
         </div>
@@ -543,7 +632,88 @@ const resetForm = () => {
           </button>
         </div>
       )}
+{waitlistOpen && (
+  <div
+    className="sheet"
+    role="dialog"
+    aria-modal="true"
+    onMouseDown={(e) => { if (e.target === e.currentTarget) closeWaitlist(); }}
+    onTouchStart={(e) => { if (e.target === e.currentTarget) closeWaitlist(); }}
+  >
+    <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet__grab" aria-hidden />
+         <button
+        type="button"
+        className="sheet__close"
+        aria-label="Close waitlist"
+        onClick={closeWaitlist}
+      >
+        
+      </button>
+      <h3 className="sheet__title">We’re opening more classes soon!</h3>
+      <p className="sheet__sub">Join the waitlist and we’ll email you as soon as we have information on more classes and dates!</p>
+
+      <form onSubmit={handleWaitlistSubmit} className="sheet__form" noValidate>
+        <div className="sheet__row">
+          <label>Location</label>
+          <input value={waitlistLoc ?? ''} readOnly />
+        </div>
+
+        <div className="sheet__row">
+          <label>Requested day</label>
+          {waitlistDay ? (
+            <input value={waitlistDay} readOnly />
+          ) : (
+            <select
+              value={waitlistDay}
+              onChange={e => setWaitlistDay(e.target.value as any)}
+              required
+            >
+              <option value="">Choose a day</option>
+              {waitlistLoc && daysMap[waitlistLoc]
+                .filter(d => isSoldOut(waitlistLoc, d))
+                .map(d => <option key={d} value={d}>{d}</option>
+              )}
+            </select>
+          )}
+        </div>
+
+        <div className="sheet__row"><label>Student name</label>
+          <input required value={wlStudentName} onChange={e => setWlStudentName(e.target.value)} />
+        </div>
+        <div className="sheet__row"><label>Age</label>
+          <input type="number" min={1} max={17} required value={wlAge} onChange={e => setWlAge(e.target.value)} />
+        </div>
+        <div className="sheet__row"><label>Parent/Guardian</label>
+          <input required value={wlParent} onChange={e => setWlParent(e.target.value)} />
+        </div>
+        <div className="sheet__row"><label>Phone</label>
+          <input required value={wlPhone} onChange={e => setWlPhone(e.target.value)} />
+        </div>
+        <div className="sheet__row"><label>Email</label>
+          <input type="email" required value={wlEmail} onChange={e => setWlEmail(e.target.value)} />
+        </div>
+        <div className="sheet__row"><label>Notes (optional)</label>
+          <input value={wlNotes} onChange={e => setWlNotes(e.target.value)} />
+        </div>
+
+        {wlMsg && <div className="sheet__msg">{wlMsg}</div>}
+
+        <div className="sheet__actions">
+          <button type="button" className="toggle-btn outline" onClick={closeWaitlist}>Cancel</button>
+          <button type="submit" className="toggle-btn" disabled={wlSubmitting}>
+            {wlSubmitting ? 'Joining…' : 'Join waitlist'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+
+
 
     </div>
+    
   );
 }
