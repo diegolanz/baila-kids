@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 
 // add near other types at the top
 
-const MAX_CLASS_SIZE = 21;
+const MAX_CLASS_SIZE = 22;
 
 type Counts = Record<LocationKey, Record<DayKey, number>>;
 
