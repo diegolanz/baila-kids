@@ -43,13 +43,11 @@ type SectionReqBody = {
 
 // Simple type guard
 function isSectionPayload(b: unknown): b is SectionReqBody {
-  return (
-    typeof b === 'object' &&
-    b !== null &&
-    Array.isArray((b as any).sectionIds) && 
-    (b as any).sectionIds.length >= 1
-  );
+  if (typeof b !== 'object' || b === null) return false;
+  const maybe = b as { sectionIds?: unknown };
+  return Array.isArray(maybe.sectionIds) && maybe.sectionIds.length >= 1;
 }
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiResp>) {
   if (req.method !== 'POST') {

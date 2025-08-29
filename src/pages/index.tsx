@@ -126,7 +126,9 @@ export default function Home() {
 
   // Waitlist UI state
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const [waitlistLoc, setWaitlistLoc] = useState<LocationKey | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+  const [waitlistLoc] = useState<LocationKey | null>(null);
   const [waitlistDay, setWaitlistDay] = useState<DayKey | ''>('');
   const [wlStudentName, setWlStudentName] = useState('');
   const [wlAge, setWlAge] = useState('');
