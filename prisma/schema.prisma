@@ -26,8 +26,9 @@ model Student {
   waiverName        String?
   waiverAddress     String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Enrollment Enrollment[]
 }
 
 enum SchoolLocation {
@@ -47,15 +48,59 @@ enum PaymentStatus {
 }
 
 model WaitingList {
-  id          String         @id @default(uuid())
-  studentName String
-  age         Int
-  parentName  String
-  phone       String
-  email       String
-  location    SchoolLocation
-  requestedDay String        // the day they wanted but was full
-  notes       String?        // optional message
-  createdAt   DateTime       @default(now())
+  id           String         @id @default(uuid())
+  studentName  String
+  age          Int
+  parentName   String
+  phone        String
+  email        String
+  location     SchoolLocation
+  requestedDay String // the day they wanted but was full
+  notes        String? // optional message
+  createdAt    DateTime       @default(now())
 }
 
+// NEW enums
+enum Day {
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  WAITLISTED
+  CANCELLED
+}
+
+// NEW models
+model ClassSection {
+  id         String         @id @default(cuid())
+  location   SchoolLocation // existing enum in your schema
+  day        Day
+  label      String         @default("A") // "A" or "B"
+  startDate  DateTime?
+  startTime  String? // "3:00 PM"
+  endTime    String? // "3:30 PM"
+  capacity   Int            @default(22)
+  priceCents Int
+  isActive   Boolean        @default(true)
+
+  enrollments Enrollment[]
+
+  @@unique([location, day, label], name: "location_day_label")
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  studentId String
+  sectionId String
+  status    EnrollmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+
+  student Student      @relation(fields: [studentId], references: [id])
+  section ClassSection @relation(fields: [sectionId], references: [id])
+
+  @@unique([studentId, sectionId])
+}

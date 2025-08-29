@@ -41,7 +41,7 @@ type RegistrationPayload = {
   phone: string;
   email: string;
   location: 'KATY' | 'SUGARLAND';
-  frequency: 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
+  frequency: 'ONCE' | 'TWICE';
   selectedDays: DayKey[];
   startDate: string; // ISO format
   liabilityAccepted: boolean;
@@ -81,6 +81,35 @@ function formatReadableDate(dateString: string | undefined): string {
   return `${dayName}, ${monthName} ${getOrdinal(dayNum)}`;
 }
 
+const formatDateNoWeekday = (ymd?: string) => {
+  if (!ymd) return '';
+  const d = new Date(ymd);
+  const day = d.getDate();
+  const suffix = (n: number) =>
+    n % 10 === 1 && n % 100 !== 11 ? 'st' :
+    n % 10 === 2 && n % 100 !== 12 ? 'nd' :
+    n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th';
+  return d.toLocaleDateString('en-US', { month: 'long' }) + ` ${day}${suffix(day)}`;
+};
+
+
+type Section = {
+  id: string;
+  location: 'KATY' | 'SUGARLAND';
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
+  label: string;       // "A" | "B"
+  startDate?: string;
+  startTime?: string;
+  endTime?: string;
+  priceCents: number;
+  capacity: number;
+  activeCount: number;
+  seatsRemaining: number;
+};
+
+
+
+
 
 
 
@@ -118,7 +147,89 @@ export default function Home() {
 
   const frequencyRef = useRef<HTMLDivElement>(null);
   const dayRef = useRef<HTMLDivElement>(null);
+  const twiceStepRef = useRef<HTMLDivElement>(null);
+
   const formRef = useRef<HTMLDivElement>(null);
+
+  const [sections, setSections] = useState<Section[]>([]);
+const [selectedSections, setSelectedSections] = useState<Section[]>([]);
+const [twiceDayStep, setTwiceDayStep] = useState<'Monday' | 'Thursday' | null>(null);
+
+
+
+
+useEffect(() => {
+  (async () => {
+    try {
+      const r = await fetch('/api/sections');
+      if (!r.ok) {
+        const txt = await r.text();
+        console.error('GET /api/sections failed:', r.status, txt);
+        return; // leave previous state in place
+      }
+      const j = await r.json();
+      console.log('Sections loaded:', j.sections); // <-- keep for debugging
+      setSections(Array.isArray(j.sections) ? j.sections : []);
+    } catch (e) {
+      console.error('GET /api/sections network error', e);
+    }
+  })();
+}, []);
+
+useEffect(() => {
+  if (location !== 'SUGARLAND') return;
+  const need = frequency === 'TWICE' ? 2 : 1;
+  setFormVisible(selectedSections.length >= need);
+}, [location, frequency, selectedSections]);
+
+const sugarlandSectionsByDay = (day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday') =>
+  sections
+    .filter(s => s.location === 'SUGARLAND' && s.day === day)
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+
+// Does this Sugar Land day have at least one open section?
+const sugarlandDayHasOpenSection = (day: DayKey) =>
+  sugarlandSectionsByDay(day).some(s => s.seatsRemaining > 0);
+
+// Is the TWICE option unavailable for Sugar Land?
+const sugarlandTwiceUnavailable = () =>
+  !(sugarlandDayHasOpenSection('Monday') && sugarlandDayHasOpenSection('Thursday'));
+
+
+const toggleSection = (section: Section) => {
+  setSelectedSections(prev => {
+    const exists = prev.some(p => p.id === section.id);
+    if (exists) return prev.filter(p => p.id !== section.id);
+    if (frequency === 'ONCE') return [section];
+    const next = [...prev, section];
+    if (next.length > 2) next.shift();
+    return next;
+  });
+};
+
+const pickSectionForDay = (sec: Section) => {
+  setSelectedSections(prev => {
+    // keep selection from the *other* day; replace this day
+    const others = prev.filter(s => s.day !== sec.day);
+    return [...others, sec];
+  });
+
+  // advance step: after Monday, go to Thursday
+  if (location === 'SUGARLAND' && frequency === 'TWICE') {
+    if (sec.day === 'Monday') setTwiceDayStep('Thursday');
+  }
+};
+
+
+const calcTotalSugarLand = () => {
+  if (selectedSections.length === 0) return 0;
+  if (selectedSections.length === 1) return Math.round(selectedSections[0].priceCents / 100);
+  const bothB = selectedSections.every(s => s.label === 'B');
+  if (bothB) return 380; // $380 for both B’s
+  const sum = selectedSections.reduce((acc, s) => acc + s.priceCents, 0);
+  return Math.round(sum / 100);
+};
 
   const [classCounts, setClassCounts] = useState<Counts>({
     KATY: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
@@ -205,8 +316,13 @@ export default function Home() {
   };
 
   // If either day at a location is sold out, block the TWICE option
-  const twoDaysUnavailable = (loc: LocationKey | null) =>
-    loc ? daysMap[loc].some(d => isSoldOut(loc, d)) : false;
+ const twoDaysUnavailable = (loc: LocationKey | null) => {
+  if (!loc) return false;
+  if (loc === 'SUGARLAND') return sugarlandTwiceUnavailable();
+  // Katy logic stays day-level
+  return daysMap[loc].some(d => isSoldOut(loc, d));
+};
+
 
 
 
@@ -219,8 +335,18 @@ export default function Home() {
     }
   }, [location]);
 
-  const soldOutDaysMsg = (loc: LocationKey | null) => {
+const soldOutDaysMsg = (loc: LocationKey | null) => {
   if (!loc) return '';
+
+  if (loc === 'SUGARLAND') {
+    const monOpen = sugarlandDayHasOpenSection('Monday');
+    const thuOpen = sugarlandDayHasOpenSection('Thursday');
+    if (monOpen && thuOpen) return '';
+    if (!monOpen && !thuOpen) return 'Both days sold out';
+    return !monOpen ? 'Monday sold out' : 'Thursday sold out';
+  }
+
+  // Katy: legacy day-level counts
   const sold = daysMap[loc].filter(d => isSoldOut(loc, d));
   if (sold.length === 0) return '';
   if (sold.length === daysMap[loc].length) return 'Both days sold out';
@@ -228,14 +354,25 @@ export default function Home() {
 };
 
 
-  useEffect(() => {
-    if (frequency === 'ONCE' && dayRef.current) {
-      dayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else if (frequency === 'TWICE') {
-      setFormVisible(true);
-    }
 
-  }, [frequency]);
+useEffect(() => {
+  if (frequency === 'ONCE' && dayRef.current) {
+    dayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else if (frequency === 'TWICE' && location === 'SUGARLAND') {
+    setSelectedSections([]);
+    setTwiceDayStep('Monday');
+    setFormVisible(false);
+    // 👇 scroll to the twice-step container
+    setTimeout(() => {
+      twiceStepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  } else if (frequency === 'TWICE') {
+    // Katy (legacy) still shows form immediately
+    setFormVisible(true);
+  }
+}, [frequency, location]);
+
+
 
   useEffect(() => {
     if (selectedDay) setFormVisible(true);
@@ -319,26 +456,62 @@ const handleSubmit = async (e: React.FormEvent) => {
   const startDateStr = chosenStartDate;
 
 
-  const payload: RegistrationPayload = {
-    studentName: cleanStudentName,
-    age: parsedAge,
-    parentName: cleanParentName,
-    phone: cleanPhone,
-    email: cleanEmail,
-    location: location!,
-    frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
-    selectedDays,
-    startDate: startDateStr,
-    liabilityAccepted: true,
-    paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
-    waiverSignature: { name: cleanParentName, address: cleanEmail },
-  };
+  // --- Sugar Land uses sectionIds instead of selectedDays ---
+if (location === 'SUGARLAND') {
+  if (frequency === 'ONCE' && selectedSections.length !== 1) {
+    setFormError('Please choose one section'); setIsSubmitting(false); return;
+  }
+  if (frequency === 'TWICE' && selectedSections.length !== 2) {
+    setFormError('Please choose two sections'); setIsSubmitting(false); return;
+  }
+
+  const sectionIds = selectedSections.map(s => s.id);
 
   const res = await fetch('/api/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      studentName: cleanStudentName,
+      age: parsedAge,
+      parentName: cleanParentName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
+      liabilityAccepted: true,
+      waiverSignature: { name: cleanParentName, address: cleanEmail },
+      sectionIds, // NEW
+    }),
   });
+
+  const data = await res.json();
+  if (data.success) { setSubmitted(true); }
+  else { setFormError('Something went wrong. Please try again.'); }
+  setIsSubmitting(false);
+  return;
+}
+
+// --- Legacy Katy payload ---
+const payload: RegistrationPayload = {
+  studentName: cleanStudentName,
+  age: parsedAge,
+  parentName: cleanParentName,
+  phone: cleanPhone,
+  email: cleanEmail,
+  location: location!,
+  frequency: frequency === 'ONCE' ? 'ONCE' : 'TWICE',
+  selectedDays,
+  startDate: startDateStr,
+  liabilityAccepted: true,
+  paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
+  waiverSignature: { name: cleanParentName, address: cleanEmail },
+};
+
+const res = await fetch('/api/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload),
+});
+
 
   const data = await res.json();
 
@@ -390,12 +563,16 @@ useEffect(() => {
 }, [waitlistOpen]);
 
 
-  const calculateTotal = () => {
-    if (!location || !frequency) return 0;
-    if (frequency === 'ONCE' && selectedDay) return prices[location][selectedDay];
-    if (frequency === 'TWICE') return prices[location].both;
-    return 0;
-  };
+const calculateTotal = () => {
+  if (!location || !frequency) return 0;
+  // Sugar Land uses section-based pricing
+  if (location === 'SUGARLAND') return calcTotalSugarLand();
+  // Katy uses legacy day-based pricing
+  if (frequency === 'ONCE' && selectedDay) return prices[location][selectedDay];
+  if (frequency === 'TWICE') return prices[location].both;
+  return 0;
+};
+
 
   
   const personalizedWaiverText = (text: string) => {
@@ -455,21 +632,132 @@ useEffect(() => {
                 )}
               </button>
 
-            {frequency === 'TWICE' && location && (
+            {/* {frequency === 'TWICE' && location && (
               <div className="selected-days-display">
                 {daysMap[location].join(' and ')} selected
               </div>
-            )}
+            )} */}
           </div>
 
         </div>
       )}
+      {/* --- Sugar Land TWICE: pick 2 sections --- */}
+{location === 'SUGARLAND' && frequency === 'TWICE' && (
+  <div className="step fade-in" ref={twiceStepRef}>
+    <h2 className="questions">
+      {twiceDayStep === 'Thursday'
+        ? 'Choose your Thursday section'
+        : 'Choose your Monday section'}
+    </h2>
 
-      {location && frequency === 'ONCE' && (
+    {/* Step content */}
+    {(['Monday','Thursday'] as DayKey[])
+      .filter(day => day === (twiceDayStep ?? 'Monday'))
+      .map(day => (
+        <div key={day} className="day-option-wrapper">
+          {/* <h3 className="day-header">{day}</h3> */}
+          <div className="button-group">
+            {sugarlandSectionsByDay(day).map(sec => {
+              const selected = selectedSections.some(s => s.id === sec.id);
+              const soldOut = sec.seatsRemaining === 0;
+              const timeNote = sec.startTime && sec.endTime ? ` • ${sec.startTime}–${sec.endTime}` : '';
+              const startNote = sec.label === 'B' ? ' • Starts Sep 15' : '';
+              const priceNote = ` • $${(sec.priceCents / 100).toFixed(0)}`;
+
+              return (
+                <button
+                  key={sec.id}
+                  disabled={soldOut}
+                  className={`${selected ? 'active' : ''} ${soldOut ? 'sold-out' : ''}`}
+                  onClick={() => pickSectionForDay(sec)}
+                >
+                  <span className="day-label">{day} {sec.label}</span>
+                  <span className="mini-note">{timeNote}{startNote}{priceNote}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Step controls */}
+          <div className="button-group" style={{ marginTop: 12 }}>
+            {twiceDayStep === 'Thursday' && (
+              <button type="button" className="outline" onClick={() => setTwiceDayStep('Monday')}>
+                ← Back to Monday
+              </button>
+            )}
+            {twiceDayStep === 'Monday' && selectedSections.some(s => s.day === 'Monday') && (
+              <button type="button" onClick={() => setTwiceDayStep('Thursday')}>
+                Next: pick Thursday →
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+
+    {/* Live summary of chosen sections + total */}
+    <div style={{ marginTop: 16 }}>
+      <p><strong>Chosen:</strong>{' '}
+        {selectedSections.length === 0
+          ? '—'
+          : selectedSections
+              .sort((a,b) => (a.day < b.day ? -1 : 1))
+              .map(s => `${s.day} ${s.label}`)
+              .join(', ')
+        }
+      </p>
+      <p className="total">Total: ${calcTotalSugarLand()}</p>
+    </div>
+  </div>
+)}
+
+
+
+      
+
+      {/* --- Sugar Land ONCE: Section-based --- */}
+      {location === 'SUGARLAND' && frequency === 'ONCE' && (
+        <div className="step fade-in" ref={dayRef}>
+          <h2 className="questions">Choose your section (A or B)</h2>
+          {(['Monday','Thursday'] as DayKey[]).map(day => (
+            <div key={day} className="day-option-wrapper">
+              {/* <h3 className="day-header">{day}</h3> */}
+              <div className="button-group">
+                {sugarlandSectionsByDay(day).map(sec => {
+                  const selected = selectedSections.some(s => s.id === sec.id);
+                  const soldOut = sec.seatsRemaining === 0;
+                  const timeNote = sec.startTime && sec.endTime ? ` • ${sec.startTime}–${sec.endTime}` : '';
+                  const startNote = sec.label === 'B' ? ' • Starts Sep 15' : '';
+                  const priceNote = ` • $${(sec.priceCents / 100).toFixed(0)}`;
+
+                  return (
+                    <button
+                      key={sec.id}
+                      disabled={soldOut}
+                      className={`${selected ? 'active' : ''} ${soldOut ? 'sold-out' : ''}`}
+                      onClick={() => toggleSection(sec)}
+                      aria-pressed={selected}
+                    >
+                      <span className="day-label">{day} {sec.label}</span>
+                      <span className="mini-note">{timeNote}{startNote}{priceNote}</span>
+                      <span className="spot-note">
+                        {soldOut ? 'Sold out' :
+                          sec.seatsRemaining <= 5 ? `Hurry! only ${sec.seatsRemaining} left!` : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <p className="total">Total: ${calcTotalSugarLand()}</p>
+        </div>
+      )}
+
+      {/* --- KATY ONCE: Legacy --- */}
+      {location === 'KATY' && frequency === 'ONCE' && (
         <div className="step fade-in" ref={dayRef}>
           <h2 className="questions">Choose your day of the week (classes start the week of August 25th,2025)</h2>
-            <div className="button-group">
-
+          <div className="button-group">
             {daysMap[location].map(day => (
               <div className="day-option-wrapper" key={day}>
                 <div className="day-option">
@@ -479,36 +767,17 @@ useEffect(() => {
                     disabled={isSoldOut(location, day)}
                   >
                     <span className="day-label">{day}</span>
-
-                    {/* Spots logic */}
                     <span className="spot-note">
                       {isSoldOut(location, day) ? 'Sold out' : lowSpotsMsg(location, day)}
                     </span>
-
-                    {/* Optional notice */}
-                    {location === 'SUGARLAND' && day === 'Monday' && (
-                      <span className="mini-note">No class on Memorial Day!</span>
-                    )}
                   </button>
-
-                  {/* <-- Place the waitlist button OUTSIDE the main button */}
-                  {isSoldOut(location, day) && (
-                    <button
-                      type="button"
-                      className="waitlist-btn"
-                      onClick={() => openWaitlist(location, day)}
-                      aria-label={`Join waitlist for ${day} at ${location}`}
-                    >
-                      Join waitlist
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
-
-            </div>
+          </div>
         </div>
       )}
+
 
       {formVisible && !submitted && (
         <div className="step fade-in" ref={formRef}>
@@ -582,16 +851,50 @@ useEffect(() => {
                 <ul>
                   <li><strong>Location:</strong> {location}</li>
                   <li><strong>Frequency:</strong> {frequency === 'ONCE' ? 'Once a week' : 'Twice a week'}</li>
-                  <li><strong>Selected Day(s):</strong> {frequency === 'ONCE' ? selectedDay : daysMap[location!].join(', ')}</li>
-                  <li>
-                    <strong>Start Date{frequency === 'TWICE' ? 's' : ''}:</strong>{' '}
-                    {frequency === 'ONCE'
-                      ? formatReadableDate(startDates[location!][selectedDay!])
-                      : daysMap[location!]
-                          .map(day => `${day}: ${formatReadableDate(startDates[location!][day])}`)
-                          .join(' | ')
-                    }
-                  </li>
+                  {location === 'SUGARLAND' ? (
+                    <>
+                      <li>
+                        <strong>Selected Class(es):</strong>{' '}
+                        {selectedSections.length === 0
+                          ? '—'
+                          : selectedSections
+                              .map(s => {
+                                const time = s.startTime && s.endTime ? ` (${s.startTime}–${s.endTime})` : '';
+                                return `${s.day} ${s.label}${time}`;
+                              })
+                              .join(', ')
+                        }
+                      </li>
+                      <li>
+                        <strong>Start Date{selectedSections?.length > 1 ? 's' : ''}:</strong>{' '}
+                        {selectedSections.length === 0
+                          ? '—'
+                          : selectedSections
+                              .map(s => {
+                                // API gives ISO; trim to YYYY-MM-DD for your formatter
+                                const ymd = s.startDate ? s.startDate.slice(0, 10) : '';
+                                return `${s.day}: ${formatDateNoWeekday(ymd)}`;
+                              })
+                              .join(' | ')
+                        }
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li><strong>Selected Day(s):</strong> {frequency === 'ONCE' ? selectedDay : daysMap[location!].join(', ')}</li>
+                      <li>
+                        <strong>Start Date{frequency === 'TWICE' ? 's' : ''}:</strong>{' '}
+                        {frequency === 'ONCE'
+                          ? formatReadableDate(startDates[location!][selectedDay!])
+                          : daysMap[location!]
+                              .map(day => `${day}: ${formatReadableDate(startDates[location!][day])}`)
+                              .join(' | ')
+                        }
+                      </li>
+                      <li><strong className='final-total'>Total: ${calculateTotal()}</strong></li>
+                    </>
+                  )}
+
                   <li><strong>Student:</strong> {studentName} (Age: {age})</li>
                   <li><strong>Parent:</strong> {parentName}</li>
                   <li><strong>Phone:</strong> {phone}</li>
