@@ -42,8 +42,13 @@ type SectionReqBody = {
 };
 
 // Simple type guard
-function isSectionPayload(b: any): b is SectionReqBody {
-  return Array.isArray(b?.sectionIds) && b.sectionIds.length >= 1;
+function isSectionPayload(b: unknown): b is SectionReqBody {
+  return (
+    typeof b === 'object' &&
+    b !== null &&
+    Array.isArray((b as any).sectionIds) && 
+    (b as any).sectionIds.length >= 1
+  );
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiResp>) {

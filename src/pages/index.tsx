@@ -236,12 +236,12 @@ const calcTotalSugarLand = () => {
     SUGARLAND: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
   });
 
-  const openWaitlist = (loc: LocationKey, day?: DayKey) => {
-    setWaitlistLoc(loc);
-    setWaitlistDay(day ?? ''); // '' means choose from dropdown in the sheet
-    setWaitlistOpen(true);
-    setWlMsg('');
-  };
+  // const openWaitlist = (loc: LocationKey, day?: DayKey) => {
+  //   setWaitlistLoc(loc);
+  //   setWaitlistDay(day ?? ''); // '' means choose from dropdown in the sheet
+  //   setWaitlistOpen(true);
+  //   setWlMsg('');
+  // };
 
   const closeWaitlist = () => {
     setWaitlistOpen(false);
@@ -717,7 +717,7 @@ const calculateTotal = () => {
       {/* --- Sugar Land ONCE: Section-based --- */}
       {location === 'SUGARLAND' && frequency === 'ONCE' && (
         <div className="step fade-in" ref={dayRef}>
-          <h2 className="questions">Choose your section (A or B)</h2>
+          <h2 className="questions">Choose your class</h2>
           {(['Monday','Thursday'] as DayKey[]).map(day => (
             <div key={day} className="day-option-wrapper">
               {/* <h3 className="day-header">{day}</h3> */}
