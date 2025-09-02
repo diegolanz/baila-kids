@@ -773,3 +773,86 @@ body.modal-open { position: fixed; width: 100%; overflow: hidden; }
   box-shadow: 0 0 0 3px rgba(146, 41, 87, 0.35);
 }
 
+/* --- TWICE step: visuals --- */
+.inline-help {
+  margin: 6px 0 14px;
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+.stepper {
+  display: flex;
+  gap: 12px;
+  margin: 6px 0 18px;
+}
+.stepper-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f2f2f2;
+  opacity: 0.7;
+}
+.stepper-item .stepper-index {
+  display: grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #ddd;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.stepper-item.active {
+  opacity: 1;
+  background: #ffe6f2;
+}
+.stepper-item.done {
+  opacity: 1;
+  background: #e8f9ee;
+}
+.stepper-item.done .stepper-index { background: #baf0cf; }
+
+/* choice cards build on your existing button styles */
+.choice-card { position: relative; }
+.choice-card.active::after {
+  content: "✓";
+  position: absolute;
+  top: 8px; right: 10px;
+  font-weight: 700;
+}
+
+/* Selection summary card */
+.selection-summary {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.summary-title { font-weight: 700; }
+.summary-total { font-weight: 700; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  background: #f4f4f4;
+}
+.chip-ok { background: #e8f9ee; }
+.chip-missing { background: #fff1f4; }
+
+.next-hint { margin-top: 8px; font-size: 0.95rem; opacity: 0.85; }
+
+
