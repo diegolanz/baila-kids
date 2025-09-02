@@ -146,18 +146,18 @@ const formatDateNoWeekday = (ymd?: string) => {
   return `${month} ${day}${suffix(day)}`;
 };
 
-const SESSION_WEEKS = 14;
+// const SESSION_WEEKS = 14;
 
-const formatMonthDayRange = (ymd?: string, weeks = SESSION_WEEKS) => {
-  if (!ymd) return '';
-  const [y, m, d] = ymd.split('-').map(Number);
-  const start = new Date(y, m - 1, d);                 // local date (no UTC shift)
-  // last class occurs weeks-1 weeks after the first one (same weekday)
-  const end   = new Date(y, m - 1, d + (weeks - 1) * 7);
-  const fmt = (dt: Date) =>
-    dt.toLocaleDateString('en-US', { month: 'short' }) + ' ' + dt.getDate();
-  return `${fmt(start)}–${fmt(end)}`;
-};
+// const formatMonthDayRange = (ymd?: string, weeks = SESSION_WEEKS) => {
+//   if (!ymd) return '';
+//   const [y, m, d] = ymd.split('-').map(Number);
+//   const start = new Date(y, m - 1, d);                 // local date (no UTC shift)
+//   // last class occurs weeks-1 weeks after the first one (same weekday)
+//   const end   = new Date(y, m - 1, d + (weeks - 1) * 7);
+//   const fmt = (dt: Date) =>
+//     dt.toLocaleDateString('en-US', { month: 'short' }) + ' ' + dt.getDate();
+//   return `${fmt(start)}–${fmt(end)}`;
+// };
 
 
 
@@ -195,7 +195,6 @@ export default function Home() {
 
   // Waitlist UI state
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 
   const [waitlistLoc] = useState<LocationKey | null>(null);
@@ -225,7 +224,7 @@ export default function Home() {
 
   const [sections, setSections] = useState<Section[]>([]);
 const [selectedSections, setSelectedSections] = useState<Section[]>([]);
-const [twiceDayStep, setTwiceDayStep] = useState<'Monday' | 'Thursday' | null>(null);
+// const [twiceDayStep, setTwiceDayStep] = useState<'Monday' | 'Thursday' | null>(null);
 
 const groupRangeNoteForSugarLand = (label: 'A' | 'B') => {
   const { mon, thu } = sugarlandGroup(label);
@@ -330,18 +329,18 @@ const toggleSection = (section: Section) => {
   });
 };
 
-const pickSectionForDay = (sec: Section) => {
-  setSelectedSections(prev => {
-    // keep selection from the *other* day; replace this day
-    const others = prev.filter(s => s.day !== sec.day);
-    return [...others, sec];
-  });
+// const pickSectionForDay = (sec: Section) => {
+//   setSelectedSections(prev => {
+//     // keep selection from the *other* day; replace this day
+//     const others = prev.filter(s => s.day !== sec.day);
+//     return [...others, sec];
+//   });
 
-  // advance step: after Monday, go to Thursday
-  if (location === 'SUGARLAND' && frequency === 'TWICE') {
-    if (sec.day === 'Monday') setTwiceDayStep('Thursday');
-  }
-};
+//   // advance step: after Monday, go to Thursday
+//   if (location === 'SUGARLAND' && frequency === 'TWICE') {
+//     if (sec.day === 'Monday') setTwiceDayStep('Thursday');
+//   }
+// };
 
 
 const calcTotalSugarLand = () => {
@@ -360,7 +359,7 @@ const calcTotalSugarLand = () => {
   // ONCE: just the single section price
   if (frequency === 'ONCE') {
     if (selectedSections.length === 1) {
-      return selectedSections[0].priceCents;
+      return selectedSections[0].priceCents / 100;
     }
     return 0;
   }
@@ -498,7 +497,6 @@ useEffect(() => {
     dayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else if (frequency === 'TWICE' && location === 'SUGARLAND') {
     setSelectedSections([]);
-    setTwiceDayStep(null);
     setFormVisible(false);
     // 👇 scroll to the twice-step container
     setTimeout(() => {
@@ -509,6 +507,7 @@ useEffect(() => {
     setFormVisible(true);
   }
 }, [frequency, location]);
+
 
 
 
