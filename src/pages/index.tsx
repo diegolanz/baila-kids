@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+
 // import { useTranslation } from 'next-i18next';
 // import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
@@ -47,7 +48,7 @@ type RegistrationPayload = {
   phone: string;
   email: string;
   location: 'KATY' | 'SUGARLAND';
-  frequency: 'ONCE' | 'TWICE';
+  frequency: 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
   selectedDays: DayKey[];
   startDate: string; // ISO format
   liabilityAccepted: boolean;
@@ -594,38 +595,67 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 
   // --- Sugar Land uses sectionIds instead of selectedDays ---
-if (location === 'SUGARLAND') {
-  if (frequency === 'ONCE' && selectedSections.length !== 1) {
-    setFormError('Please choose one section'); setIsSubmitting(false); return;
-  }
-  if (frequency === 'TWICE' && selectedSections.length !== 2) {
-    setFormError('Please choose two sections'); setIsSubmitting(false); return;
-  }
+  if (location === 'SUGARLAND') {
+    if (frequency === 'ONCE' && selectedSections.length !== 1) {
+      setFormError('Please choose one section'); setIsSubmitting(false); return;
+    }
+    if (frequency === 'TWICE' && selectedSections.length !== 2) {
+      setFormError('Please choose two sections'); setIsSubmitting(false); return;
+    }
 
-  const sectionIds = selectedSections.map(s => s.id);
+    const sectionIds = selectedSections.map(s => s.id);
 
-  const res = await fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      studentName: cleanStudentName,
-      age: parsedAge,
-      parentName: cleanParentName,
-      phone: cleanPhone,
-      email: cleanEmail,
-      paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
-      liabilityAccepted: true,
-      waiverSignature: { name: cleanParentName, address: cleanEmail },
-      sectionIds, // NEW
-    }),
-  });
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentName: cleanStudentName,
+        age: parsedAge,
+        parentName: cleanParentName,
+        phone: cleanPhone,
+        email: cleanEmail,
+        paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
+        liabilityAccepted: true,
+        waiverSignature: { name: cleanParentName, address: cleanEmail },
+        sectionIds, // NEW
+      }),
+    });
 
-  const data = await res.json();
-  if (data.success) { setSubmitted(true); }
+    const data = await res.json();
+    if (data.success) {
+      // build a legacy-shaped payload so the email template has location/days/startDate
+      const emailPayload = {
+        studentName: cleanStudentName,
+        age: parsedAge,
+        parentName: cleanParentName,
+        phone: cleanPhone,
+        email: cleanEmail,
+        location: 'SUGARLAND',
+        frequency, // 'ONCE' | 'TWICE' (see note below)
+        selectedDays:
+          frequency === 'TWICE' ? (['Monday','Thursday'] as DayKey[])
+                                : ([selectedSections[0].day] as DayKey[]),
+        startDate:
+          frequency === 'TWICE'
+            ? (selectedSections.find(s => s.day === 'Monday')?.startDate?.slice(0,10) ?? '')
+            : (selectedSections[0]?.startDate?.slice(0,10) ?? ''),
+        liabilityAccepted: true,
+        paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
+        waiverSignature: { name: cleanParentName, address: cleanEmail },
+      };
+
+      await fetch('/api/sendConfirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload),
+      });
+
+      setSubmitted(true);
+      setIsSubmitting(false);
+      return;
+    }
   else { setFormError('Something went wrong. Please try again.'); }
-  setIsSubmitting(false);
-  return;
-}
+  }
 
 // --- Legacy Katy payload ---
 const payload: RegistrationPayload = {
@@ -635,7 +665,7 @@ const payload: RegistrationPayload = {
   phone: cleanPhone,
   email: cleanEmail,
   location: location!,
-  frequency: frequency === 'ONCE' ? 'ONCE' : 'TWICE',
+  frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
   selectedDays,
   startDate: startDateStr,
   liabilityAccepted: true,
@@ -669,6 +699,8 @@ const res = await fetch('/api/register', {
   setLocation(null);
   setIsSubmitting(false);
 };
+
+
 const handleWaitlistDayChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
   setWaitlistDay(e.target.value as DayKey | '');
 };
