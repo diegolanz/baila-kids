@@ -10,7 +10,7 @@ import { useState, useRef, useEffect } from 'react';
 
 // add near other types at the top
 
-const MAX_CLASS_SIZE = 22;
+const MAX_CLASS_SIZE = 20;
 
 type Counts = Record<LocationKey, Record<DayKey, number>>;
 
@@ -21,25 +21,23 @@ const daysMap = {
 } as const satisfies Record<LocationKey, readonly DayKey[]>;
 
 
-// Two-day discounted prices (in cents)
-const TWO_DAY_PRICE_ORIGINAL_CENTS = 45000; // Group A (original schedule)
-const TWO_DAY_PRICE_BONUS_CENTS    = 38000; // Group B (bonus classes starting Sep 15)
+// Two-day discounted prices (Spring 2026)
+const TWO_DAY_PRICE_SUGARLAND_CENTS = 52000; // Mon ($265) + Thu ($280)
+const TWO_DAY_PRICE_KATY_CENTS      = 53000; // Tue ($280) + Wed ($280) minus discount
 
 
-const startDates: Record<LocationKey, Record<DayKey, string>> = {
+
+const startDates: Record<LocationKey, Partial<Record<DayKey, string>>> = {
   KATY: {
-    Monday: '',
-    Tuesday: '2025-08-26',
-    Wednesday: '2025-08-27',
-    Thursday: '',
+    Tuesday: '2026-01-20',
+    Wednesday: '2026-01-21',
   },
   SUGARLAND: {
-    Monday: '2025-08-25',
-    Tuesday: '',
-    Wednesday: '',
-    Thursday: '2025-08-28',
+    Monday: '2026-01-26',
+    Thursday: '2026-01-22',
   },
 };
+
 
 type RegistrationPayload = {
   studentName: string;
@@ -58,13 +56,38 @@ type RegistrationPayload = {
 
 type LocationKey = 'KATY' | 'SUGARLAND';
 // type FrequencyKey = 'ONCE' | 'TWICE';
-export type DayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
+export type DayKey =
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday';
 
 
-const prices: Record<LocationKey, Record<DayKey | 'both', number>> = {
-  KATY: { Monday: 0, Tuesday: 245, Wednesday: 245, Thursday: 0, both: 450 },
-  SUGARLAND: { Monday: 230, Tuesday: 0, Wednesday: 0, Thursday: 245, both: 450 },
+const prices: Record<LocationKey, Partial<Record<DayKey | 'both', number>>> = {
+  KATY: {
+    Monday: 0,
+    Tuesday: 280,
+    Wednesday: 280,
+    Thursday: 0,
+    Friday: 0,
+    both: 530, // Katy Tue+Wed (no discount)
+  },
+  // Sugar Land pricing is DB-driven (section.priceCents)
+  SUGARLAND: {
+    Monday: 0,
+    Tuesday: 0,
+    Wednesday: 0,
+    Thursday: 0,
+    Friday: 0,
+    both: 520,
+  },
 };
+
+
+const normalizeFrequency = (f: 'ONCE' | 'TWICE') =>
+  f === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK';
+
 
 function formatReadableDate(dateString: string | undefined): string {
   if (!dateString) return ''; // or return "Invalid date" or similar fallback
@@ -99,21 +122,18 @@ const formatMonthDayShort = (d: Date) =>
   d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 // Given a year and a class day, return that day's date in the week that contains Dec 1
-const endDateInWeekOfDec1 = (year: number, day: DayKey) => {
-  const anchor = new Date(year, 11, 1); // Dec 1 (local)
-  // Find Monday of that week
-  const weekday = anchor.getDay();           // 0=Sun..6=Sat
-  const diffToMonday = (weekday + 6) % 7;    // days since Monday
-  const monday = new Date(anchor);
-  monday.setDate(anchor.getDate() - diffToMonday);
+const SESSION_WEEKS = 17;
 
-  const offsets: Record<DayKey, number> = {
-    Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3,
-  };
-  const end = new Date(monday);
-  end.setDate(monday.getDate() + offsets[day]);
+const endDateAfterWeeks = (startYMD: string, weeks = SESSION_WEEKS) => {
+  const start = parseYMDLocal(startYMD);
+  const end = new Date(start);
+  end.setDate(start.getDate() + (weeks - 1) * 7);
   return end;
 };
+
+
+
+
 
 // Show "MonStart – ThuEnd(week of Dec 1)" for Sugar Land 2-day groups
 
@@ -123,15 +143,15 @@ const endDateInWeekOfDec1 = (year: number, day: DayKey) => {
 
 // Build " • Sep 15–Dec 1" for a given section; if no startDate, show " • Ends Dec 1"
 const rangeNoteForSection = (sec: Section) => {
-  const startYMD = sec.startDate?.slice(0, 10);
-  const start = startYMD ? parseYMDLocal(startYMD) : null;
-  const year = start ? start.getFullYear() : new Date().getFullYear();
-  const end = endDateInWeekOfDec1(year, sec.day);
+  if (!sec.startDate) return '';
 
-  return start
-    ? ` • ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`
-    : ` • Ends ${formatMonthDayShort(end)}`;
+  const startYMD = sec.startDate.slice(0, 10);
+  const start = parseYMDLocal(startYMD);
+  const end = endDateAfterWeeks(startYMD);
+
+  return `• ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
 };
+
 
 
 const formatDateNoWeekday = (ymd?: string) => {
@@ -166,7 +186,7 @@ const formatDateNoWeekday = (ymd?: string) => {
 type Section = {
   id: string;
   location: 'KATY' | 'SUGARLAND';
-  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
   label: string;       // "A" | "B"
   startDate?: string;
   startTime?: string;
@@ -198,7 +218,7 @@ export default function Home() {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
 
 
-  const [waitlistLoc] = useState<LocationKey | null>(null);
+  const [waitlistLoc, setWaitlistLoc] = useState<LocationKey | null>(null);
   const [waitlistDay, setWaitlistDay] = useState<DayKey | ''>('');
   const [wlStudentName, setWlStudentName] = useState('');
   const [wlAge, setWlAge] = useState('');
@@ -208,6 +228,8 @@ export default function Home() {
   const [wlNotes, setWlNotes] = useState('');
   const [wlSubmitting, setWlSubmitting] = useState(false);
   const [wlMsg, setWlMsg] = useState<string>('');
+
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
 
 
   const [studentName, setStudentName] = useState('');
@@ -239,13 +261,14 @@ const groupRangeNoteForSugarLand = (label: 'A' | 'B') => {
     (thu?.startDate ? parseYMDLocal(thu.startDate.slice(0, 10)).getFullYear() : new Date().getFullYear());
 
   // The *last Thursday* is the Thursday in the week that contains Dec 1
-  const thuEnd = endDateInWeekOfDec1(year, 'Thursday');
+  if (!mon?.startDate) return '';
 
-  if (!monStart) {
-    // Fallback: if Monday start is missing, still show an end-only note
-    return ` • Ends ${formatMonthDayShort(thuEnd)}`;
-  }
-  return ` • ${formatMonthDayShort(monStart)}–${formatMonthDayShort(thuEnd)}`;
+  const startYMD = mon.startDate.slice(0, 10);
+  const start = parseYMDLocal(startYMD);
+  const end = endDateAfterWeeks(startYMD);
+
+  return `• ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
+
 };
 
 // Build " • Aug 26–Dec X" for a given Katy day
@@ -253,10 +276,27 @@ const rangeNoteForKaty = (day: DayKey) => {
   const startYMD = startDates.KATY[day];
   if (!startYMD) return '';
   const start = parseYMDLocal(startYMD);
-  const year = start.getFullYear();
-  const end = endDateInWeekOfDec1(year, day);
+  const end = endDateAfterWeeks(startYMD);
   return `${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
 };
+const rangeNoteForKatyBothDays = () => {
+  const tuesdayYMD = startDates.KATY.Tuesday;
+  const wednesdayYMD = startDates.KATY.Wednesday;
+
+  if (!tuesdayYMD || !wednesdayYMD) return '';
+
+  const start = parseYMDLocal(tuesdayYMD);
+
+  // End should be based on Wednesday, not Tuesday
+  const end = endDateAfterWeeks(wednesdayYMD);
+
+  return `• ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
+};
+
+const KATY_TWO_DAY_TIME = '2:10 PM - 2:45 PM';
+
+
+
 
 useEffect(() => {
   (async () => {
@@ -267,14 +307,24 @@ useEffect(() => {
         console.error('GET /api/sections failed:', r.status, txt);
         return; // leave previous state in place
       }
+
       const j = await r.json();
-      console.log('Sections loaded:', j.sections); // <-- keep for debugging
-      setSections(Array.isArray(j.sections) ? j.sections : []);
+
+      setRegistrationOpen(j.registrationOpen);
+
+      console.log('Sections loaded:', j.sections); 
+
+      const springSections = Array.isArray(j.sections)
+        ? j.sections.filter(isSpring2026Section)
+        : [];
+
+      setSections(springSections);
     } catch (e) {
       console.error('GET /api/sections network error', e);
     }
   })();
 }, []);
+
 
 useEffect(() => {
   if (location !== 'SUGARLAND') return;
@@ -282,10 +332,17 @@ useEffect(() => {
   setFormVisible(selectedSections.length >= need);
 }, [location, frequency, selectedSections]);
 
-const sugarlandSectionsByDay = (day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday') =>
+
+type SugarLandDay = 'Monday' | 'Thursday';
+
+const sugarlandSectionsByDay = (day: SugarLandDay) =>
   sections
     .filter(s => s.location === 'SUGARLAND' && s.day === day)
     .sort((a, b) => a.label.localeCompare(b.label));
+
+const sugarlandFridaySections = sections.filter(
+  s => s.location === 'SUGARLAND' && s.day === 'Friday'
+);
 
   // Pair up Monday/Thursday by section label (A/B)
 const sugarlandGroup = (label: 'A' | 'B') => {
@@ -311,7 +368,7 @@ const pickGroupBothDays = (label: 'A' | 'B') => {
 
 
 // Does this Sugar Land day have at least one open section?
-const sugarlandDayHasOpenSection = (day: DayKey) =>
+const sugarlandDayHasOpenSection = (day: SugarLandDay) =>
   sugarlandSectionsByDay(day).some(s => s.seatsRemaining > 0);
 
 // Is the TWICE option unavailable for Sugar Land?
@@ -347,17 +404,16 @@ const toggleSection = (section: Section) => {
 const calcTotalSugarLand = () => {
   if (location !== 'SUGARLAND') return 0;
 
+  // TWICE: fixed Spring 2026 price, label-independent
   if (frequency === 'TWICE') {
-    // Expect exactly two sections (Mon & Thu) with same label
-    if (selectedSections.length === 2 && selectedSections[0].label === selectedSections[1].label) {
-      return (selectedSections[0].label === 'B')
-        ? TWO_DAY_PRICE_BONUS_CENTS / 100
-        : TWO_DAY_PRICE_ORIGINAL_CENTS / 100;
+    // Expect exactly two sections (Mon & Thu)
+    if (selectedSections.length === 2) {
+      return TWO_DAY_PRICE_SUGARLAND_CENTS / 100;
     }
     return 0;
   }
 
-  // ONCE: just the single section price
+  // ONCE: section-based pricing
   if (frequency === 'ONCE') {
     if (selectedSections.length === 1) {
       return selectedSections[0].priceCents / 100;
@@ -369,17 +425,31 @@ const calcTotalSugarLand = () => {
 };
 
 
-  const [classCounts, setClassCounts] = useState<Counts>({
-    KATY: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
-    SUGARLAND: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0 },
-  });
 
-  // const openWaitlist = (loc: LocationKey, day?: DayKey) => {
-  //   setWaitlistLoc(loc);
-  //   setWaitlistDay(day ?? ''); // '' means choose from dropdown in the sheet
-  //   setWaitlistOpen(true);
-  //   setWlMsg('');
-  // };
+  const [classCounts, setClassCounts] = useState<Counts>({
+  KATY: {
+    Monday: 0,
+    Tuesday: 0,
+    Wednesday: 0,
+    Thursday: 0,
+    Friday: 0,
+  },
+  SUGARLAND: {
+    Monday: 0,
+    Tuesday: 0,
+    Wednesday: 0,
+    Thursday: 0,
+    Friday: 0,
+  },
+});
+
+
+  const openWaitlist = (loc: LocationKey, day?: DayKey) => {
+    setWaitlistLoc(loc);
+    setWaitlistDay(day ?? ''); // '' means choose from dropdown in the sheet
+    setWaitlistOpen(true);
+    setWlMsg('');
+  };
 
   const closeWaitlist = () => {
     setWaitlistOpen(false);
@@ -491,6 +561,17 @@ const soldOutDaysMsg = (loc: LocationKey | null) => {
   return sold.join(' and ') + ' sold out';
 };
 
+const isSpring2026Section = (s: Section) => {
+  if (!s.startDate) return false;
+
+  const d = new Date(s.startDate);
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0 = Jan
+
+  // Spring 2026 = Jan (0) through May (4)
+  return year === 2026 && month >= 0 && month <= 4;
+};
+
 
 
 useEffect(() => {
@@ -510,6 +591,8 @@ useEffect(() => {
 }, [frequency, location]);
 
 
+const isFridaySelected =
+  selectedSections.length === 1 && selectedSections[0].day === 'Friday';
 
 
   useEffect(() => {
@@ -631,7 +714,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         phone: cleanPhone,
         email: cleanEmail,
         location: 'SUGARLAND',
-        frequency, // 'ONCE' | 'TWICE' (see note below)
+        frequency: normalizeFrequency(frequency!), // 'ONCE' | 'TWICE' (see note below)
         selectedDays:
           frequency === 'TWICE' ? (['Monday','Thursday'] as DayKey[])
                                 : ([selectedSections[0].day] as DayKey[]),
@@ -657,6 +740,11 @@ const handleSubmit = async (e: React.FormEvent) => {
   else { setFormError('Something went wrong. Please try again.'); }
   }
 
+  if (!startDateStr) {
+    throw new Error('Please select a class before continuing.');
+    return;
+  }
+
 // --- Legacy Katy payload ---
 const payload: RegistrationPayload = {
   studentName: cleanStudentName,
@@ -665,7 +753,7 @@ const payload: RegistrationPayload = {
   phone: cleanPhone,
   email: cleanEmail,
   location: location!,
-  frequency: frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK',
+  frequency: normalizeFrequency(frequency!),
   selectedDays,
   startDate: startDateStr,
   liabilityAccepted: true,
@@ -750,6 +838,22 @@ const calculateTotal = () => {
   };
 
 
+  if (registrationOpen === null) {
+    return <div>Loading…</div>;
+  }
+
+  if (registrationOpen === false) {
+    return (
+      <div className="registration-closed">
+        <h1>Spring 2026 Registration Opens Soon</h1>
+        <p>
+          Registration is not open yet. Please check back on
+          <strong> January 2</strong>.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="registration-wrapper">
       <div className="background-doodles">
@@ -765,7 +869,9 @@ const calculateTotal = () => {
       <>
       <div className="step">
         <h1 className="reg-title">Welcome to the Baila Kids class registration!</h1>
-        <h1 className="title-moreinfo">This registration is valid for Fall 2025 (14 weeks)</h1>
+        <h1 className="title-moreinfo">
+          This registration is valid for the Spring 2026 session
+        </h1>
         <h2 className="price-info">All prices listed below are the TOTAL amount for all 14 weeks</h2>
         <h2 className="questions">First, which is your preferred location?</h2>
         <div className="button-group">
@@ -793,7 +899,7 @@ const calculateTotal = () => {
               <button
                 onClick={() => {setFrequency('TWICE'); setSelectedSections([])}}
                 className={frequency === 'TWICE' ? 'active' : ''}
-                disabled={twoDaysUnavailable(location)}
+                disabled={twoDaysUnavailable(location) || isFridaySelected}
               >
                 2 Days / Week {location === 'SUGARLAND' ? (
   <>
@@ -802,8 +908,9 @@ const calculateTotal = () => {
 ) : (
   <>
     <span className="mini-note">
-  Tuesday ({rangeNoteForKaty('Tuesday')}) & Wednesday ({rangeNoteForKaty('Wednesday')}) • $450
+  {KATY_TWO_DAY_TIME} • Tue & Wed {rangeNoteForKatyBothDays()} • ${prices.KATY.both}
 </span>
+
 
   </>
 )}
@@ -835,12 +942,11 @@ const calculateTotal = () => {
           selectedSections.length === 2 && selectedSections.every(s => s.label === label);
         const soldOut = groupSoldOut(label);
         const time =
-  mon?.startTime && mon?.endTime ? `${mon.startTime}–${mon.endTime}` : '';
+        mon?.startTime && mon?.endTime ? `${mon.startTime}–${mon.endTime}` : '';
 
-// Discounted 2-day price by group
-const price = (label === 'B'
-  ? TWO_DAY_PRICE_BONUS_CENTS
-  : TWO_DAY_PRICE_ORIGINAL_CENTS) / 100;
+      // Discounted 2-day price by group
+        const price = TWO_DAY_PRICE_SUGARLAND_CENTS / 100;
+
 
 
 
@@ -861,13 +967,13 @@ const price = (label === 'B'
             aria-pressed={selected}
           >
             <span className="day-label">Group {label}</span>
-<span className="mini-note">
-  {' '}• {time} • Mon & Thu{groupRangeNoteForSugarLand(label)} • ${price}
-</span>
-            <span className="spot-note">{soldOut ? 'Sold out' : lowSpots}</span>
+            <span className="mini-note">
+              {' '}• {time} • Mon & Thu{groupRangeNoteForSugarLand(label)} • ${price}
+            </span>
+              <span className="spot-note">{soldOut ? 'Sold out' : lowSpots}</span>
           </button>
-        );
-      })}
+                );
+          })}
     </div>
 
     {/* Live selection summary */}
@@ -899,7 +1005,7 @@ const price = (label === 'B'
       {location === 'SUGARLAND' && frequency === 'ONCE' && (
         <div className="step fade-in" ref={dayRef}>
           <h2 className="questions">Choose your class</h2>
-          {(['Monday','Thursday'] as DayKey[]).map(day => (
+          {(['Monday','Thursday'] as const).map(day => (
             <div key={day} className="day-option-wrapper">
               {/* <h3 className="day-header">{day}</h3> */}
               <div className="button-group">
@@ -930,6 +1036,55 @@ const price = (label === 'B'
               </div>
             </div>
           ))}
+
+          {/* --- Sugar Land Friday (ONCE only) --- */}
+          {sugarlandFridaySections.length > 0 && (
+            <div className="day-option-wrapper">
+              <h3 className="questions" style={{ marginTop: '1.5rem' }}>
+                Friday Class
+              </h3>
+              <h4 className="mini-note">
+                ONLY AVAILABLE FOR STUDENTS IN: PARAGUAY, PERU, AND MEXICO CLASSES
+              </h4>
+
+              <div className="button-group">
+                {sugarlandFridaySections.map(sec => {
+                  const selected = selectedSections.some(s => s.id === sec.id);
+                  const soldOut = sec.seatsRemaining === 0;
+                  const timeNote  = sec.startTime && sec.endTime ? ` • ${sec.startTime}–${sec.endTime}` : '';
+                  const rangeNote = rangeNoteForSection(sec);
+                  const priceNote = ` • $${(sec.priceCents / 100).toFixed(0)}`;
+
+                  return (
+                    <button
+                      key={sec.id}
+                      disabled={soldOut}
+                      className={`${selected ? 'active' : ''} ${soldOut ? 'sold-out' : ''}`}
+                      onClick={() => {
+                        setFrequency('ONCE');              // enforce rule
+                        setSelectedSections([sec]);        // Friday = exactly one
+                        setFormVisible(true);
+                      }}
+                      aria-pressed={selected}
+                    >
+                      <span className="day-label">{sec.day} Group {sec.label}</span>
+                      <span className="mini-note">
+                        {timeNote}{rangeNote}{priceNote}
+                      </span>
+                      <span className="spot-note">
+                        {soldOut
+                          ? 'Sold out'
+                          : sec.seatsRemaining <= 5
+                          ? `Hurry! only ${sec.seatsRemaining} left!`
+                          : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <p className="total">Total: ${calcTotalSugarLand()}</p>
         </div>
       )}
@@ -937,7 +1092,7 @@ const price = (label === 'B'
       {/* --- KATY ONCE: Legacy --- */}
       {location === 'KATY' && frequency === 'ONCE' && (
         <div className="step fade-in" ref={dayRef}>
-          <h2 className="questions">Choose your day of the week (classes start the week of August 25th,2025)</h2>
+          <h2 className="questions">Choose your day of the week (classes start the week of January 20th, 2026)</h2>
           <div className="button-group">
             {daysMap[location].map(day => (
               <div className="day-option-wrapper" key={day}>
@@ -952,9 +1107,21 @@ const price = (label === 'B'
                     {rangeNoteForKaty(day)} • ${prices.KATY[day]}
                     </span>
                     <span className="spot-note">
-                      {isSoldOut(location, day) ? 'Sold out' : lowSpotsMsg(location, day)}
+                      {isSoldOut(location, day)
+                        ? (
+                            <>
+                              Sold out ·{' '}
+                              <button
+                                type="button"
+                                className="waitlist-btn"
+                                onClick={() => openWaitlist(location, day)}
+                              >
+                                Join waitlist
+                              </button>
+                            </>
+                          )
+                        : lowSpotsMsg(location, day)}
                     </span>
-
                   </button>
                 </div>
               </div>

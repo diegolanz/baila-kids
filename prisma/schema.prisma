@@ -7,28 +7,83 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Student {
-  id            String         @id @default(uuid())
-  studentName   String
-  age           Int
-  parentName    String
-  phone         String
-  email         String
-  location      SchoolLocation
-  frequency     ClassFrequency
-  selectedDays  String[]
-  startDate     DateTime
-  paymentStatus PaymentStatus  @default(PENDING)
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
 
-  // NEW FIELDS (names kept exactly as you’re sending)
+model Student {
+  id                String         @id @default(uuid())
+  studentName       String
+  age               Int
+  parentName        String
+  phone             String
+  email             String
+  location          SchoolLocation
+  frequency         ClassFrequency
+  selectedDays      String[]
+  startDate         DateTime
+  paymentStatus     PaymentStatus  @default(PENDING)
   paymentMethod     String?
-  liabilityAccepted Boolean @default(false)
+  liabilityAccepted Boolean        @default(false)
   waiverName        String?
   waiverAddress     String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  session           Session        @default(FALL_2024)
+  Enrollment        Enrollment[]
+}
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  Enrollment Enrollment[]
+model WaitingList {
+  id           String         @id @default(uuid())
+  studentName  String
+  age          Int
+  parentName   String
+  phone        String
+  email        String
+  location     SchoolLocation
+  requestedDay String
+  notes        String?
+  createdAt    DateTime       @default(now())
+  session      Session        @default(FALL_2024)
+}
+
+model ClassSection {
+  id          String         @id @default(cuid())
+  location    SchoolLocation
+  day         Day
+  label       String         @default("A")
+  startDate   DateTime?
+  startTime   String?
+  endTime     String?
+  capacity    Int            @default(22)
+  priceCents  Int
+  isActive    Boolean        @default(true)
+  session     Session        @default(FALL_2024)
+  enrollments Enrollment[]
+
+  @@unique([location, day, label, session])
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  studentId String
+  sectionId String
+  status    EnrollmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  session   Session          @default(FALL_2024)
+  section   ClassSection     @relation(fields: [sectionId], references: [id])
+  student   Student          @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, sectionId])
+}
+
+enum Session {
+  FALL_2024
+  SPRING_2025
+  FALL_2025
+  SPRING_2026
 }
 
 enum SchoolLocation {
@@ -47,60 +102,16 @@ enum PaymentStatus {
   FAILED
 }
 
-model WaitingList {
-  id           String         @id @default(uuid())
-  studentName  String
-  age          Int
-  parentName   String
-  phone        String
-  email        String
-  location     SchoolLocation
-  requestedDay String // the day they wanted but was full
-  notes        String? // optional message
-  createdAt    DateTime       @default(now())
-}
-
-// NEW enums
 enum Day {
   Monday
   Tuesday
   Wednesday
   Thursday
+  Friday
 }
 
 enum EnrollmentStatus {
   ACTIVE
   WAITLISTED
   CANCELLED
-}
-
-// NEW models
-model ClassSection {
-  id         String         @id @default(cuid())
-  location   SchoolLocation // existing enum in your schema
-  day        Day
-  label      String         @default("A") // "A" or "B"
-  startDate  DateTime?
-  startTime  String? // "3:00 PM"
-  endTime    String? // "3:30 PM"
-  capacity   Int            @default(22)
-  priceCents Int
-  isActive   Boolean        @default(true)
-
-  enrollments Enrollment[]
-
-  @@unique([location, day, label], name: "location_day_label")
-}
-
-model Enrollment {
-  id        String           @id @default(cuid())
-  studentId String
-  sectionId String
-  status    EnrollmentStatus @default(ACTIVE)
-  createdAt DateTime         @default(now())
-
-  student Student      @relation(fields: [studentId], references: [id])
-  section ClassSection @relation(fields: [sectionId], references: [id])
-
-  @@unique([studentId, sectionId])
 }

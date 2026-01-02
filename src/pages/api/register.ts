@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import prisma from '@/lib/prisma';
+import { getActiveSession } from '@/lib/getActiveSession';
+import { isRegistrationOpen } from '@/lib/getRegistrationStatus';
+
+
 import {
   Prisma,
   SchoolLocation,
@@ -53,6 +57,17 @@ function isSectionPayload(b: unknown): b is SectionReqBody {
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiResp>) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method Not Allowed' });
+  }
+  const session = await getActiveSession();
+
+
+  const open = await isRegistrationOpen();
+
+  if (!open) {
+    return res.status(403).json({
+      success: false,
+      error: 'Registration is not open yet',
+    });
   }
 
   try {
@@ -120,6 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         liabilityAccepted: true,
         waiverName: body?.waiverSignature?.name ?? null,
         waiverAddress: body?.waiverSignature?.address ?? null,
+        session,
       };
 
       const student = await prisma.student.create({ data });
@@ -134,6 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             studentId: student.id,
             sectionId: s.id,
             status: hasSeat ? EnrollmentStatus.ACTIVE : EnrollmentStatus.WAITLISTED,
+            session,
           },
         });
       }
@@ -183,6 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       liabilityAccepted: true,
       waiverName: waiverSignature?.name ?? null,
       waiverAddress: waiverSignature?.address ?? null,
+      session,
     };
 
     await prisma.student.create({ data });

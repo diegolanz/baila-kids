@@ -77,7 +77,7 @@ const registrantHTML = (p: RegistrationPayload) => {
       <li>
           Payment method: ${p.paymentMethod}
           ${p.paymentMethod === 'Zelle'
-            ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>2816581140</strong> via Zelle. Include your child's name in the memo.`
+            ? `<br/><strong>Zelle Instructions:</strong> Send payment to <strong>bailakidsdance@gmail.com</strong> via Zelle. Include your child's name in the subject line.`
             : ''
           }
           ${p.paymentMethod === 'Cash'
@@ -87,6 +87,7 @@ const registrantHTML = (p: RegistrationPayload) => {
           }
           ${p.paymentMethod === 'Check'
             ? `<br/><strong>Please make sure payment is complete before the first day of classes (${p.startDate})</strong>
+                <br/>Make checks payable to <strong>Baila Kids LLC</strong>
                 <br/><strong>Please drop off payments in an envelope to the Spanish Schoolhouse front office</strong>`
 
             : ''
@@ -94,7 +95,7 @@ const registrantHTML = (p: RegistrationPayload) => {
       </li>
     </ul>
     <p style="margin-top:20px;color:#555;font-size:14px;line-height:1.4">
-      We’ll be reaching out with more details about your classes very soon. Have any questions? Please email <strong>cristinapantin@yahoo.com</strong> and include the student's name in the subject line.
+      We’ll be reaching out with more details about your classes very soon. Have any questions? Please email <strong>bailakidsdance@gmail.com</strong> or text <strong>(281) 658-1140</strong> and include the student's name in the subject line.
       In the meantime, keep an eye on your inbox — we can’t wait to dance with you!
     </p>
   `);
