@@ -872,7 +872,7 @@ const calculateTotal = () => {
         <h1 className="title-moreinfo">
           This registration is valid for the Spring 2026 session
         </h1>
-        <h2 className="price-info">All prices listed below are the TOTAL amount for all 14 weeks</h2>
+        <h2 className="price-info">All prices listed below are the TOTAL amount for all 16 weeks</h2>
         <h2 className="questions">First, which is your preferred location?</h2>
         <div className="button-group">
           {(['KATY', 'SUGARLAND'] as const).map(loc => (
