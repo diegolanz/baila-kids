@@ -18,8 +18,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Pull only fields we need
     const students = await prisma.student.findMany({
-      select: { location: true, selectedDays: true },
+      where: {
+        session: 'SPRING_2026',
+      },
+      select: {
+        location: true,
+        selectedDays: true,
+      },
     });
+
 
     // Initialize zeroed structure
     const counts: Counts = {
