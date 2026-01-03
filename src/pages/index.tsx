@@ -23,7 +23,7 @@ const daysMap = {
 
 // Two-day discounted prices (Spring 2026)
 const TWO_DAY_PRICE_SUGARLAND_CENTS = 52000; // Mon ($265) + Thu ($280)
-const TWO_DAY_PRICE_KATY_CENTS      = 53000; // Tue ($280) + Wed ($280) minus discount
+// const TWO_DAY_PRICE_KATY_CENTS      = 53000; // Tue ($280) + Wed ($280) minus discount
 
 
 
@@ -250,15 +250,15 @@ const [selectedSections, setSelectedSections] = useState<Section[]>([]);
 // const [twiceDayStep, setTwiceDayStep] = useState<'Monday' | 'Thursday' | null>(null);
 
 const groupRangeNoteForSugarLand = (label: 'A' | 'B') => {
-  const { mon, thu } = sugarlandGroup(label);
+  const { mon } = sugarlandGroup(label);
   // We want the *first Monday* as the start
-  const monStartYMD = mon?.startDate?.slice(0, 10);
-  const monStart = monStartYMD ? parseYMDLocal(monStartYMD) : null;
+  // const monStartYMD = mon?.startDate?.slice(0, 10);
+  // const monStart = monStartYMD ? parseYMDLocal(monStartYMD) : null;
 
   // Year anchor: use Monday's start if present; else Thursday's; else current
-  const year =
-    monStart?.getFullYear() ??
-    (thu?.startDate ? parseYMDLocal(thu.startDate.slice(0, 10)).getFullYear() : new Date().getFullYear());
+  // const year =
+  //   monStart?.getFullYear() ??
+  //   (thu?.startDate ? parseYMDLocal(thu.startDate.slice(0, 10)).getFullYear() : new Date().getFullYear());
 
   // The *last Thursday* is the Thursday in the week that contains Dec 1
   if (!mon?.startDate) return '';

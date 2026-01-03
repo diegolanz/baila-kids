@@ -63,7 +63,7 @@ model ClassSection {
   session     Session        @default(FALL_2024)
   enrollments Enrollment[]
 
-  @@unique([location, day, label, session])
+  @@unique([location, day, label, session], name: "location_day_label_session")
 }
 
 model Enrollment {
