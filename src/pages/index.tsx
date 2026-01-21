@@ -574,6 +574,8 @@ const isSpring2026Section = (s: Section) => {
 
 
 
+
+
 useEffect(() => {
   if (frequency === 'ONCE' && dayRef.current) {
     dayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -590,6 +592,9 @@ useEffect(() => {
   }
 }, [frequency, location]);
 
+const isFridayClass =
+  selectedDay === 'Friday' ||
+  (selectedSections.length === 1 && selectedSections[0].day === 'Friday');
 
 const isFridaySelected =
   selectedSections.length === 1 && selectedSections[0].day === 'Friday';
@@ -902,18 +907,18 @@ const calculateTotal = () => {
                 disabled={twoDaysUnavailable(location) || isFridaySelected}
               >
                 2 Days / Week {location === 'SUGARLAND' ? (
-  <>
-    <span className="days-text">Mon & Thu</span>
-  </>
-) : (
-  <>
-    <span className="mini-note">
-  {KATY_TWO_DAY_TIME} • Tue & Wed {rangeNoteForKatyBothDays()} • ${prices.KATY.both}
-</span>
+                  <>
+                    <span className="days-text">Mon & Thu</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="mini-note">
+                  {KATY_TWO_DAY_TIME} • Tue & Wed {rangeNoteForKatyBothDays()} • ${prices.KATY.both}
+                </span>
 
 
-  </>
-)}
+                  </>
+                )}
 
                 {/* Sold-out notice */}
                 {location && soldOutDaysMsg(location) && (
@@ -1143,12 +1148,21 @@ const calculateTotal = () => {
               onChange={e => setAge(e.target.value)}
             >
               <option value="">Student Age</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-            </select>
 
+            {isFridayClass ? (
+                <>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </>
+              ) : (
+                <>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                </>
+              )}
+            </select>
 
             <input type="text" placeholder="Parent/Guardian FIRST and LAST Name" required value={parentName} onChange={e => setParentName(e.target.value)} />
             <input type="text" placeholder="Phone" required value={phone} onChange={e => setPhone(e.target.value)} />
