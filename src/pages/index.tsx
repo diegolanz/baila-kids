@@ -1010,6 +1010,9 @@ const calculateTotal = () => {
       {location === 'SUGARLAND' && frequency === 'ONCE' && (
         <div className="step fade-in" ref={dayRef}>
           <h2 className="questions">Choose your class</h2>
+           <h4 className="mini-note">
+                MONDAY AND THURSDAY ONLY AVAILABLE FOR BOLIVIA, COLOMBIA, COSTA RICA, ARGENTINA, VENEZUELA, SPAIN
+              </h4>
           {(['Monday','Thursday'] as const).map(day => (
             <div key={day} className="day-option-wrapper">
               {/* <h3 className="day-header">{day}</h3> */}
