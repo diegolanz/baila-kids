@@ -850,11 +850,8 @@ const calculateTotal = () => {
   if (registrationOpen === false) {
     return (
       <div className="registration-closed">
-        <h1>Spring 2026 Registration Opens Soon</h1>
-        <p>
-          Registration is not open yet. Please check back on
-          <strong> January 2</strong>.
-        </p>
+        <h1>Fall 2026 Registration Opens Soon</h1>
+        <p>Registration is not open yet. Please check back on <strong> August 11</strong>.</p>
       </div>
     );
   }

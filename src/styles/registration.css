@@ -855,4 +855,15 @@ body.modal-open { position: fixed; width: 100%; overflow: hidden; }
 
 .next-hint { margin-top: 8px; font-size: 0.95rem; opacity: 0.85; }
 
+.registration-closed {
+  text-align: center;
+  margin-top: 180px; 
+}
 
+.registration-closed h1 {
+  font-size: 3rem;
+}
+
+.registration-closed p {
+  font-size: 1.5rem;
+}
