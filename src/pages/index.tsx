@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-
+// import '../styles/baila-kids-glow-registration.css';
 // import { useTranslation } from 'next-i18next';
 // import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
@@ -852,6 +852,7 @@ const calculateTotal = () => {
       <div className="registration-closed">
         <h1>Fall 2026 Registration Opens Soon</h1>
         <p>Registration is not open yet. Please check back on <strong> August 11</strong>.</p>
+        <p>Thank you!</p>
       </div>
     );
   }
