@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from "next/image";
 
 type CityKey = 'HOUSTON' | 'DALLAS';
 
@@ -661,7 +662,13 @@ export default function Home() {
       <div className="background-doodles" />
 
       <div className="logo-container">
-        <img src="/bailakids/logo.png" alt="Baila Kids Logo" className="logo" />
+        <Image
+          src="/bailakids/logo.png"
+          alt="Baila Kids Logo"
+          width={300}
+          height={300}
+          className="logo"
+        />
       </div>
 
       {!submitted && (
