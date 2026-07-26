@@ -20,7 +20,9 @@ model Student {
   parentName        String
   phone             String
   email             String
-  location          SchoolLocation
+  city              City
+  classroom         String?
+  school            School
   frequency         ClassFrequency
   selectedDays      String[]
   startDate         DateTime
@@ -31,39 +33,47 @@ model Student {
   waiverAddress     String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
-  session           Session        @default(FALL_2024)
+  session           Session        @default(FALL_2026)
   Enrollment        Enrollment[]
 }
 
 model WaitingList {
-  id           String         @id @default(uuid())
+  id           String    @id @default(uuid())
   studentName  String
   age          Int
   parentName   String
   phone        String
+  classroom    String?
   email        String
-  location     SchoolLocation
+  city         City
+  school       School
   requestedDay String
   notes        String?
-  createdAt    DateTime       @default(now())
-  session      Session        @default(FALL_2024)
+  createdAt    DateTime  @default(now())
+  session      Session   @default(FALL_2026)
 }
 
 model ClassSection {
   id          String         @id @default(cuid())
-  location    SchoolLocation
+  city        City
+  school      School
   day         Day
   label       String         @default("A")
   startDate   DateTime?
+  endDate     DateTime?
   startTime   String?
   endTime     String?
   capacity    Int            @default(22)
   priceCents  Int
+  bundlePriceCents   Int?    
+
   isActive    Boolean        @default(true)
-  session     Session        @default(FALL_2024)
+  session     Session        @default(FALL_2026)
   enrollments Enrollment[]
 
-  @@unique([location, day, label, session], name: "location_day_label_session")
+  eligibleClasses String[]       @default([])
+
+  @@unique([city, school, day, label, session])
 }
 
 model Enrollment {
@@ -72,7 +82,7 @@ model Enrollment {
   sectionId String
   status    EnrollmentStatus @default(ACTIVE)
   createdAt DateTime         @default(now())
-  session   Session          @default(FALL_2024)
+  session   Session          @default(FALL_2026)
   section   ClassSection     @relation(fields: [sectionId], references: [id])
   student   Student          @relation(fields: [studentId], references: [id])
 
@@ -84,11 +94,7 @@ enum Session {
   SPRING_2025
   FALL_2025
   SPRING_2026
-}
-
-enum SchoolLocation {
-  KATY
-  SUGARLAND
+  FALL_2026
 }
 
 enum ClassFrequency {
@@ -114,4 +120,19 @@ enum EnrollmentStatus {
   ACTIVE
   WAITLISTED
   CANCELLED
+}
+
+enum City {
+  HOUSTON
+  DALLAS
+}
+
+enum School {
+  KATY
+  SUGARLAND
+  ALLEN
+  FRISCO
+  CASTLE_HILLS
+  NORTH_DALLAS
+  PRESTON_TRAIL
 }

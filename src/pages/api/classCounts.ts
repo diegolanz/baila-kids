@@ -3,12 +3,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '@/lib/prisma';
 
 type DayKey = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
-type LocationKey = 'KATY' | 'SUGARLAND';
 
-const daysMap: Record<LocationKey, DayKey[]> = {
-  KATY: ['Tuesday', 'Wednesday'],
-  SUGARLAND: ['Monday', 'Thursday'],
-};
+
 
 type Counts = Record<LocationKey, Record<DayKey, number>>;
 
@@ -19,10 +15,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Pull only fields we need
     const students = await prisma.student.findMany({
       where: {
-        session: 'SPRING_2026',
+        session: 'FALL_2026',
       },
       select: {
-        location: true,
+        school: true,
         selectedDays: true,
       },
     });

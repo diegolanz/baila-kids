@@ -10,20 +10,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const {
       studentName, age, parentName, phone, email,
-      location, requestedDay, notes
+      city, school, requestedDay, notes
     } = req.body as {
       studentName: string; age: number; parentName: string; phone: string; email: string;
-      location: 'KATY' | 'SUGARLAND'; requestedDay: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
+      city: 'HOUSTON' | 'DALLAS';
+      school:
+        | 'KATY'
+        | 'SUGARLAND'
+        | 'ALLEN'
+        | 'FRISCO'
+        | 'CASTLE_HILLS'
+        | 'NORTH_DALLAS'
+        | 'PRESTON_TRAIL'; requestedDay: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday';
       notes?: string;
     };
 
     // very light validation
-    if (!studentName || !parentName || !phone || !email || !location || !requestedDay) {
+    if (!studentName || !parentName || !phone || !email || !city || !school || !requestedDay) {
       return res.status(400).json({ success: false, error: 'Missing fields' });
     }
 
     await prisma.waitingList.create({
-      data: { studentName, age, parentName, phone, email, location, requestedDay, notes }
+      data: { studentName, age, parentName, phone, email, city, school, requestedDay, notes }
     });
 
     return res.status(200).json({ success: true });

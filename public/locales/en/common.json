@@ -26,7 +26,7 @@
   },
   "register": "Register",
   "submitting": "Submitting...",
-  "complete_title": "🎉 Registration Complete! 🎉",
+  "complete_title": " Registration Complete! ",
   "complete_text": "Thank you for registering. We’ve received your information and will send you a confirmation email shortly!",
   "submit_another": "Submit another application",
   "errors": {

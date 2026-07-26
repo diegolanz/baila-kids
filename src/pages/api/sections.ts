@@ -24,18 +24,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           select: { id: true },
         },
       },
-      orderBy: [{ location: 'asc' }, { day: 'asc' }, { label: 'asc' }],
+      orderBy: [
+        { city: 'asc' },
+        { school: 'asc' },
+        { day: 'asc' },
+        { label: 'asc' },
+      ],
     });
 
     const shaped = sections.map((s) => ({
       id: s.id,
-      location: s.location,           // "SUGARLAND"
+      city: s.city,
+      school: s.school,
       day: s.day,                     // "Monday" | "Thursday"
       label: s.label,                 // "A" | "B"
       startDate: s.startDate ?? null,
+      endDate: s.endDate ?? null,
       startTime: s.startTime ?? null,
+      eligibleClasses: s.eligibleClasses ?? [],
       endTime: s.endTime ?? null,
       priceCents: s.priceCents,
+      bundlePriceCents: s.bundlePriceCents ?? null,
       capacity: s.capacity,
       activeCount: s.enrollments.length,
       seatsRemaining: Math.max(0, s.capacity - s.enrollments.length),
@@ -46,7 +55,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sections: shaped,
     });
   } catch (err) {
-    console.error('sections API error', err);
-    res.status(500).json({ sections: [], error: 'Internal error' });
+    console.error("========== SECTIONS API ERROR ==========");
+    console.dir(err, { depth: null });
+
+    res.status(500).json({
+      sections: [],
+      error: String(err),
+    });
   }
 }

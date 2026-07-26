@@ -7,7 +7,8 @@ import { isRegistrationOpen } from '@/lib/getRegistrationStatus';
 
 import {
   Prisma,
-  SchoolLocation,
+  City,
+  School,
   ClassFrequency,
   PaymentStatus,
   EnrollmentStatus,
@@ -22,7 +23,15 @@ type LegacyReqBody = {
   parentName: string;
   phone: string;
   email: string;
-  location: 'KATY' | 'SUGARLAND';
+  city: 'HOUSTON' | 'DALLAS';
+  school:
+    | 'KATY'
+    | 'SUGARLAND'
+    | 'ALLEN'
+    | 'FRISCO'
+    | 'CASTLE_HILLS'
+    | 'NORTH_DALLAS'
+    | 'PRESTON_TRAIL';
   frequency: 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
   selectedDays: string[]; // legacy: ['Monday'] or ['Monday','Thursday']
   startDate: string;      // ISO
@@ -44,6 +53,8 @@ type SectionReqBody = {
 
   // NEW: pass 1 or 2 section IDs (e.g., Monday A id, Thursday B id)
   sectionIds: string[];
+  city: City;
+  school: School; 
 };
 
 // Simple type guard
@@ -110,6 +121,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         where: { id: { in: sectionIds } },
         include: { enrollments: { where: { status: 'ACTIVE' } } },
       });
+      if (
+        sections.some(
+          (s) => s.city !== body.city || s.school !== body.school
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: 'Section selection does not match selected school',
+        });
+      }
 
       if (sections.length !== sectionIds.length) {
         return res.status(400).json({ success: false, error: 'Invalid section selection' });
@@ -125,7 +146,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         // We cannot infer precise location/frequency from sections
         // but to keep your enums valid, take the first section's location
         // and infer frequency from the count
-        location: sections[0].location as SchoolLocation,
+        city: body.city,
+        school: body.school,
         frequency:
           (sectionIds.length === 1 ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK') as ClassFrequency,
         selectedDays: [], // legacy field no longer used for these registrations
@@ -162,7 +184,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // LEGACY PATH: your existing Katy/Sugar Land (single-slot-per-day) payload
     // ----------------------------------------------------------------
     const {
-      location,
+      city,
+      school,
       frequency,
       selectedDays,
       startDate,
@@ -170,8 +193,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     } = body as LegacyReqBody;
 
     // Minimal legacy validation (unchanged)
-    if (!location || !frequency) {
-      return res.status(400).json({ success: false, error: 'Missing location or frequency' });
+    if (!city || !school || !frequency) {
+      return res.status(400).json({ success: false, error: 'Missing city, school or frequency' });
     }
     if (!Array.isArray(selectedDays) || selectedDays.length === 0) {
       return res.status(400).json({ success: false, error: 'selectedDays required' });
@@ -191,7 +214,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       parentName,
       phone,
       email,
-      location: location as SchoolLocation,
+      city: city as City,
+      school: school as School,
       frequency: frequency as ClassFrequency,
       selectedDays,
       startDate: new Date(start),

@@ -1,8 +1,8 @@
 import { appWithTranslation } from 'next-i18next';
 import type { AppProps } from 'next/app';
 import '../styles/globals.css';
-import '../styles/registration.css';
-// import '../styles/crazy.css';
+// import '../styles/registration.css';
+import '../styles/crazy.css';
 
 function MyApp({ Component, pageProps }: AppProps) {
   return <Component {...pageProps} />;

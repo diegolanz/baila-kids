@@ -1,61 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
-// import '../styles/baila-kids-glow-registration.css';
-// import { useTranslation } from 'next-i18next';
-// import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-// import '@/styles/registration.css'; // Local scoped CSS in /styles
+type CityKey = 'HOUSTON' | 'DALLAS';
 
+type SchoolKey =
+  | 'KATY'
+  | 'SUGARLAND'
+  | 'ALLEN'
+  | 'FRISCO'
+  | 'CASTLE_HILLS'
+  | 'NORTH_DALLAS'
+  | 'PRESTON_TRAIL';
 
-// Utility types
-
-// add near other types at the top
-
-const MAX_CLASS_SIZE = 20;
-
-type Counts = Record<LocationKey, Record<DayKey, number>>;
-
-
-const daysMap = {
-  KATY: ['Tuesday', 'Wednesday'],
-  SUGARLAND: ['Monday', 'Thursday'],
-} as const satisfies Record<LocationKey, readonly DayKey[]>;
-
-
-// Two-day discounted prices (Spring 2026)
-const TWO_DAY_PRICE_SUGARLAND_CENTS = 52000; // Mon ($265) + Thu ($280)
-// const TWO_DAY_PRICE_KATY_CENTS      = 53000; // Tue ($280) + Wed ($280) minus discount
-
-
-
-const startDates: Record<LocationKey, Partial<Record<DayKey, string>>> = {
-  KATY: {
-    Tuesday: '2026-01-20',
-    Wednesday: '2026-01-21',
-  },
-  SUGARLAND: {
-    Monday: '2026-01-26',
-    Thursday: '2026-01-22',
-  },
-};
-
-
-type RegistrationPayload = {
-  studentName: string;
-  age: number;
-  parentName: string;
-  phone: string;
-  email: string;
-  location: 'KATY' | 'SUGARLAND';
-  frequency: 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
-  selectedDays: DayKey[];
-  startDate: string; // ISO format
-  liabilityAccepted: boolean;
-  paymentMethod: 'Cash' | 'Zelle' | 'Check';
-  waiverSignature?: { name?: string; address?: string };
-};
-
-type LocationKey = 'KATY' | 'SUGARLAND';
-// type FrequencyKey = 'ONCE' | 'TWICE';
 export type DayKey =
   | 'Monday'
   | 'Tuesday'
@@ -63,162 +18,190 @@ export type DayKey =
   | 'Thursday'
   | 'Friday';
 
-
-const prices: Record<LocationKey, Partial<Record<DayKey | 'both', number>>> = {
-  KATY: {
-    Monday: 0,
-    Tuesday: 280,
-    Wednesday: 280,
-    Thursday: 0,
-    Friday: 0,
-    both: 530, // Katy Tue+Wed (no discount)
-  },
-  // Sugar Land pricing is DB-driven (section.priceCents)
-  SUGARLAND: {
-    Monday: 0,
-    Tuesday: 0,
-    Wednesday: 0,
-    Thursday: 0,
-    Friday: 0,
-    both: 520,
-  },
-};
-
-
-const normalizeFrequency = (f: 'ONCE' | 'TWICE') =>
-  f === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK';
-
-
-function formatReadableDate(dateString: string | undefined): string {
-  if (!dateString) return ''; // or return "Invalid date" or similar fallback
-
-  const [year, month, day] = dateString.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-  const monthName = date.toLocaleDateString('en-US', { month: 'long' });
-  const dayNum = date.getDate();
-
-  const getOrdinal = (n: number) => {
-    if (n > 3 && n < 21) return `${n}th`;
-    switch (n % 10) {
-      case 1: return `${n}st`;
-      case 2: return `${n}nd`;
-      case 3: return `${n}rd`;
-      default: return `${n}th`;
-    }
-  };
-
-  return `${dayName}, ${monthName} ${getOrdinal(dayNum)}`;
-}
-
-// Parse 'YYYY-MM-DD' as a LOCAL date (avoids UTC off-by-one)
-const parseYMDLocal = (ymd: string) => {
-  const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-
-// Short "Mon Day" formatter (e.g., "Sep 15")
-const formatMonthDayShort = (d: Date) =>
-  d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-// Given a year and a class day, return that day's date in the week that contains Dec 1
-const SESSION_WEEKS = 17;
-
-const endDateAfterWeeks = (startYMD: string, weeks = SESSION_WEEKS) => {
-  const start = parseYMDLocal(startYMD);
-  const end = new Date(start);
-  end.setDate(start.getDate() + (weeks - 1) * 7);
-  return end;
-};
-
-
-
-
-
-// Show "MonStart – ThuEnd(week of Dec 1)" for Sugar Land 2-day groups
-
-
-
-
-
-// Build " • Sep 15–Dec 1" for a given section; if no startDate, show " • Ends Dec 1"
-const rangeNoteForSection = (sec: Section) => {
-  if (!sec.startDate) return '';
-
-  const startYMD = sec.startDate.slice(0, 10);
-  const start = parseYMDLocal(startYMD);
-  const end = endDateAfterWeeks(startYMD);
-
-  return `• ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
-};
-
-
-
-const formatDateNoWeekday = (ymd?: string) => {
-  if (!ymd) return '';
-  const [y, m, d] = ymd.split('-').map(Number);        // parse parts
-  const date = new Date(y, m - 1, d);                  // local date (no UTC shift)
-  const day = date.getDate();
-  const month = date.toLocaleDateString('en-US', { month: 'long' });
-  const suffix = (n: number) =>
-    n % 10 === 1 && n % 100 !== 11 ? 'st' :
-    n % 10 === 2 && n % 100 !== 12 ? 'nd' :
-    n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th';
-  return `${month} ${day}${suffix(day)}`;
-};
-
-// const SESSION_WEEKS = 14;
-
-// const formatMonthDayRange = (ymd?: string, weeks = SESSION_WEEKS) => {
-//   if (!ymd) return '';
-//   const [y, m, d] = ymd.split('-').map(Number);
-//   const start = new Date(y, m - 1, d);                 // local date (no UTC shift)
-//   // last class occurs weeks-1 weeks after the first one (same weekday)
-//   const end   = new Date(y, m - 1, d + (weeks - 1) * 7);
-//   const fmt = (dt: Date) =>
-//     dt.toLocaleDateString('en-US', { month: 'short' }) + ' ' + dt.getDate();
-//   return `${fmt(start)}–${fmt(end)}`;
-// };
-
-
-
+type FrequencyChoice = 'ONCE' | 'TWICE';
+type ApiFrequency = 'ONCE_A_WEEK' | 'TWICE_A_WEEK';
+type PaymentMethod = 'Cash' | 'Zelle' | 'Check';
 
 type Section = {
   id: string;
-  location: 'KATY' | 'SUGARLAND';
-  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
-  label: string;       // "A" | "B"
-  startDate?: string;
-  startTime?: string;
-  endTime?: string;
+  city: CityKey;
+  school: SchoolKey;
+  day: DayKey;
+  label: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  eligibleClasses: string[];
   priceCents: number;
+  bundlePriceCents?: number | null;
   capacity: number;
   activeCount: number;
   seatsRemaining: number;
 };
 
+type SectionsResponse = {
+  registrationOpen: boolean;
+  sections: Section[];
+  error?: string;
+};
+
+type RegistrationPayload = {
+  studentName: string;
+  age: number;
+  parentName: string;
+  phone: string;
+  email: string;
+  city: CityKey;
+  school: SchoolKey;
+  frequency: ApiFrequency;
+  selectedDays: DayKey[];
+  startDate: string;
+  sectionIds: string[];
+  liabilityAccepted: boolean;
+  paymentMethod: PaymentMethod;
+  waiverSignature: { name: string; address: string };
+};
+
+const SESSION_LABEL = 'Fall 2026';
+
+const CITY_LABELS: Record<CityKey, string> = {
+  HOUSTON: 'Houston',
+  DALLAS: 'Dallas',
+};
+
+const SCHOOL_LABELS: Record<SchoolKey, string> = {
+  KATY: 'Katy',
+  SUGARLAND: 'Sugar Land',
+  ALLEN: 'Allen',
+  FRISCO: 'Frisco',
+  CASTLE_HILLS: 'Castle Hills',
+  NORTH_DALLAS: 'North Dallas',
+  PRESTON_TRAIL: 'Preston Trail',
+};
+
+const CITY_ORDER: CityKey[] = ['HOUSTON', 'DALLAS'];
+const SCHOOL_ORDER: SchoolKey[] = [
+  'KATY',
+  'SUGARLAND',
+  'ALLEN',
+  'FRISCO',
+  'CASTLE_HILLS',
+  'NORTH_DALLAS',
+  'PRESTON_TRAIL',
+];
+
+const DAY_ORDER: Record<DayKey, number> = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+};
+
+// Keep genuine bundle discounts here. Schools without an entry use the sum
+// of the selected section prices, so future schools work without UI rewrites.
+
+
+const normalizeFrequency = (frequency: FrequencyChoice): ApiFrequency =>
+  frequency === 'ONCE' ? 'ONCE_A_WEEK' : 'TWICE_A_WEEK';
+
+const parseYMDLocal = (ymd: string) => {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const ymdFromIso = (value?: string | null) => value?.slice(0, 10) ?? '';
+
+const formatMonthDayShort = (date: Date) =>
+  date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+const formatDateNoWeekday = (ymd?: string) => {
+  if (!ymd) return '';
+
+  const date = parseYMDLocal(ymd);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const suffix =
+    day % 10 === 1 && day % 100 !== 11
+      ? 'st'
+      : day % 10 === 2 && day % 100 !== 12
+        ? 'nd'
+        : day % 10 === 3 && day % 100 !== 13
+          ? 'rd'
+          : 'th';
+
+  return `${month} ${day}${suffix}`;
+};
 
 
 
+const rangeNoteForSection = (section: Section) => {
+  const startYMD = ymdFromIso(section.startDate);
+  const endYMD = ymdFromIso(section.endDate);
 
+  if (!startYMD || !endYMD) return '';
 
+  return `• ${formatMonthDayShort(parseYMDLocal(startYMD))}–${formatMonthDayShort(
+    parseYMDLocal(endYMD),
+  )}`;
+};
+
+const rangeNoteForSections = (sections: Section[]) => {
+  const starts = sections
+    .map(section => ymdFromIso(section.startDate))
+    .filter(Boolean)
+    .map(parseYMDLocal);
+
+  const ends = sections
+    .map(section => ymdFromIso(section.endDate))
+    .filter(Boolean)
+    .map(parseYMDLocal);
+
+  if (starts.length === 0 || ends.length === 0) return '';
+
+  const earliestStart = new Date(
+    Math.min(...starts.map(date => date.getTime())),
+  );
+
+  const latestEnd = new Date(
+    Math.max(...ends.map(date => date.getTime())),
+  );
+
+  return `• ${formatMonthDayShort(earliestStart)}–${formatMonthDayShort(latestEnd)}`;
+};
+
+const sortSections = (a: Section, b: Section) =>
+  DAY_ORDER[a.day] - DAY_ORDER[b.day] ||
+  a.label.localeCompare(b.label) ||
+  (a.startTime ?? '').localeCompare(b.startTime ?? '');
+
+const unique = <T,>(values: T[]) => Array.from(new Set(values));
 
 export default function Home() {
-  // const { t, i18n } = useTranslation('common');
+  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [loadError, setLoadError] = useState('');
+
+  const [city, setCity] = useState<CityKey | null>(null);
+  const [school, setSchool] = useState<SchoolKey | null>(null);
+  const [frequency, setFrequency] = useState<FrequencyChoice | null>(null);
+  const [selectedSections, setSelectedSections] = useState<Section[]>([]);
+
+  const [studentName, setStudentName] = useState('');
+  const [age, setAge] = useState('');
+  const [parentName, setParentName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
   const [liabilityAccepted, setLiabilityAccepted] = useState(false);
   const [formError, setFormError] = useState('');
-  const [location, setLocation] = useState<'KATY' | 'SUGARLAND' | null>(null);
-  const [frequency, setFrequency] = useState<'ONCE' | 'TWICE' | null>(null);
-  const [selectedDay, setSelectedDay] = useState<DayKey | null>(null);
-  const [formVisible, setFormVisible] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  // Waitlist UI state
   const [waitlistOpen, setWaitlistOpen] = useState(false);
-
-
-  const [waitlistLoc, setWaitlistLoc] = useState<LocationKey | null>(null);
+  const [waitlistCity, setWaitlistCity] = useState<CityKey | null>(null);
+  const [waitlistSchool, setWaitlistSchool] = useState<SchoolKey | null>(null);
   const [waitlistDay, setWaitlistDay] = useState<DayKey | ''>('');
   const [wlStudentName, setWlStudentName] = useState('');
   const [wlAge, setWlAge] = useState('');
@@ -227,631 +210,446 @@ export default function Home() {
   const [wlEmail, setWlEmail] = useState('');
   const [wlNotes, setWlNotes] = useState('');
   const [wlSubmitting, setWlSubmitting] = useState(false);
-  const [wlMsg, setWlMsg] = useState<string>('');
+  const [wlMsg, setWlMsg] = useState('');
 
-  const [registrationOpen, setRegistrationOpen] = useState<boolean | null>(null);
-
-
-  const [studentName, setStudentName] = useState('');
-  const [age, setAge] = useState('');
-  const [parentName, setParentName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('');
-
+  const schoolRef = useRef<HTMLDivElement>(null);
   const frequencyRef = useRef<HTMLDivElement>(null);
-  const dayRef = useRef<HTMLDivElement>(null);
-  const twiceStepRef = useRef<HTMLDivElement>(null);
-
+  const scheduleRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  const [sections, setSections] = useState<Section[]>([]);
-const [selectedSections, setSelectedSections] = useState<Section[]>([]);
-// const [twiceDayStep, setTwiceDayStep] = useState<'Monday' | 'Thursday' | null>(null);
+  useEffect(() => {
+    let cancelled = false;
 
-const groupRangeNoteForSugarLand = (label: 'A' | 'B') => {
-  const { mon } = sugarlandGroup(label);
-  // We want the *first Monday* as the start
-  // const monStartYMD = mon?.startDate?.slice(0, 10);
-  // const monStart = monStartYMD ? parseYMDLocal(monStartYMD) : null;
+    const loadSections = async () => {
+      try {
+        const response = await fetch('/api/sections');
+        const data = (await response.json()) as SectionsResponse;
 
-  // Year anchor: use Monday's start if present; else Thursday's; else current
-  // const year =
-  //   monStart?.getFullYear() ??
-  //   (thu?.startDate ? parseYMDLocal(thu.startDate.slice(0, 10)).getFullYear() : new Date().getFullYear());
+        if (!response.ok) {
+          throw new Error(data.error || 'Could not load class schedules.');
+        }
 
-  // The *last Thursday* is the Thursday in the week that contains Dec 1
-  if (!mon?.startDate) return '';
-
-  const startYMD = mon.startDate.slice(0, 10);
-  const start = parseYMDLocal(startYMD);
-  const end = endDateAfterWeeks(startYMD);
-
-  return `• ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
-
-};
-
-// Build " • Aug 26–Dec X" for a given Katy day
-const rangeNoteForKaty = (day: DayKey) => {
-  const startYMD = startDates.KATY[day];
-  if (!startYMD) return '';
-  const start = parseYMDLocal(startYMD);
-  const end = endDateAfterWeeks(startYMD);
-  return `${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
-};
-const rangeNoteForKatyBothDays = () => {
-  const tuesdayYMD = startDates.KATY.Tuesday;
-  const wednesdayYMD = startDates.KATY.Wednesday;
-
-  if (!tuesdayYMD || !wednesdayYMD) return '';
-
-  const start = parseYMDLocal(tuesdayYMD);
-
-  // End should be based on Wednesday, not Tuesday
-  const end = endDateAfterWeeks(wednesdayYMD);
-
-  return `• ${formatMonthDayShort(start)}–${formatMonthDayShort(end)}`;
-};
-
-const KATY_TWO_DAY_TIME = '2:10 PM - 2:45 PM';
-
-
-
-
-useEffect(() => {
-  (async () => {
-    try {
-      const r = await fetch('/api/sections');
-      if (!r.ok) {
-        const txt = await r.text();
-        console.error('GET /api/sections failed:', r.status, txt);
-        return; // leave previous state in place
+        if (!cancelled) {
+          setRegistrationOpen(data.registrationOpen);
+          setSections(Array.isArray(data.sections) ? data.sections : []);
+          setLoadError('');
+        }
+      } catch (error) {
+        console.error('GET /api/sections failed', error);
+        if (!cancelled) {
+          setRegistrationOpen(false);
+          setLoadError('We could not load the class schedules. Please refresh and try again.');
+        }
       }
+    };
 
-      const j = await r.json();
+    void loadSections();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-      setRegistrationOpen(j.registrationOpen);
+  const availableCities = useMemo(
+    () =>
+      CITY_ORDER.filter(cityKey =>
+        sections.some(section => section.city === cityKey),
+      ),
+    [sections],
+  );
 
-      console.log('Sections loaded:', j.sections); 
+  const availableSchools = useMemo(() => {
+    if (!city) return [];
 
-      const springSections = Array.isArray(j.sections)
-        ? j.sections.filter(isSpring2026Section)
-        : [];
+    return SCHOOL_ORDER.filter(schoolKey =>
+      sections.some(
+        section => section.city === city && section.school === schoolKey,
+      ),
+    );
+  }, [city, sections]);
 
-      setSections(springSections);
-    } catch (e) {
-      console.error('GET /api/sections network error', e);
+  const schoolSections = useMemo(() => {
+    if (!city || !school) return [];
+
+    return sections
+      .filter(section => section.city === city && section.school === school)
+      .sort(sortSections);
+  }, [city, school, sections]);
+
+  const onceSections = schoolSections;
+
+  const twiceGroups = useMemo(() => {
+    const byLabel = new Map<string, Section[]>();
+
+    for (const section of schoolSections) {
+      const current = byLabel.get(section.label) ?? [];
+      current.push(section);
+      byLabel.set(section.label, current);
     }
-  })();
-}, []);
 
+    return Array.from(byLabel.entries())
+      .map(([label, groupSections]) => {
+        const bundleSections = groupSections.filter(
+          section => section.bundlePriceCents != null,
+        );
 
-useEffect(() => {
-  if (location !== 'SUGARLAND') return;
-  const need = frequency === 'TWICE' ? 2 : 1;
-  setFormVisible(selectedSections.length >= need);
-}, [location, frequency, selectedSections]);
+        return {
+          label,
+          sections: bundleSections.sort(sortSections),
+        };
+      })
+      .filter(group => {
+        const distinctDays = unique(group.sections.map(section => section.day));
+        return distinctDays.length === 2;
+      });
+  }, [schoolSections]);
 
+  const onceAvailable = onceSections.some(section => section.seatsRemaining > 0);
+  const twiceAvailable = twiceGroups.some(group =>
+    group.sections.every(section => section.seatsRemaining > 0),
+  );
 
-type SugarLandDay = 'Monday' | 'Thursday';
+  const soldOutDays = useMemo(
+    () =>
+      unique(
+        schoolSections
+          .filter(section => section.seatsRemaining === 0)
+          .map(section => section.day),
+      ).sort((a, b) => DAY_ORDER[a] - DAY_ORDER[b]),
+    [schoolSections],
+  );
 
-const sugarlandSectionsByDay = (day: SugarLandDay) =>
-  sections
-    .filter(s => s.location === 'SUGARLAND' && s.day === day)
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const expectedSectionCount = frequency === 'TWICE' ? 2 : 1;
+  const formVisible =
+    !!city &&
+    !!school &&
+    !!frequency &&
+    selectedSections.length === expectedSectionCount;
 
-const sugarlandFridaySections = sections.filter(
-  s => s.location === 'SUGARLAND' && s.day === 'Friday'
-);
+  const selectedDays = useMemo(
+    () =>
+      unique(selectedSections.map(section => section.day)).sort(
+        (a, b) => DAY_ORDER[a] - DAY_ORDER[b],
+      ),
+    [selectedSections],
+  );
 
-  // Pair up Monday/Thursday by section label (A/B)
-const sugarlandGroup = (label: 'A' | 'B') => {
-  const mon = sections.find(s => s.location === 'SUGARLAND' && s.day === 'Monday'    && s.label === label);
-  const thu = sections.find(s => s.location === 'SUGARLAND' && s.day === 'Thursday'  && s.label === label);
-  return { mon, thu };
-};
+  const totalCents = useMemo(() => {
+    if (selectedSections.length === 0) return 0;
 
-// Disable a group if either day is sold out/missing
-const groupSoldOut = (label: 'A' | 'B') => {
-  const { mon, thu } = sugarlandGroup(label);
-  return !mon || !thu || mon.seatsRemaining === 0 || thu.seatsRemaining === 0;
-};
+    if (frequency === 'TWICE') {
+      const bundlePrice = selectedSections[0]?.bundlePriceCents;
 
-// When a group is picked, select both sections at once
-const pickGroupBothDays = (label: 'A' | 'B') => {
-  const { mon, thu } = sugarlandGroup(label);
-  if (!mon || !thu) return;
-  setSelectedSections([mon, thu]); // exactly 2 sections
-  setFormVisible(true);
-};
-
-
-
-// Does this Sugar Land day have at least one open section?
-const sugarlandDayHasOpenSection = (day: SugarLandDay) =>
-  sugarlandSectionsByDay(day).some(s => s.seatsRemaining > 0);
-
-// Is the TWICE option unavailable for Sugar Land?
-const sugarlandTwiceUnavailable = () =>
-  !(sugarlandDayHasOpenSection('Monday') && sugarlandDayHasOpenSection('Thursday'));
-
-
-const toggleSection = (section: Section) => {
-  setSelectedSections(prev => {
-    const exists = prev.some(p => p.id === section.id);
-    if (exists) return prev.filter(p => p.id !== section.id);
-    if (frequency === 'ONCE') return [section];
-    const next = [...prev, section];
-    if (next.length > 2) next.shift();
-    return next;
-  });
-};
-
-// const pickSectionForDay = (sec: Section) => {
-//   setSelectedSections(prev => {
-//     // keep selection from the *other* day; replace this day
-//     const others = prev.filter(s => s.day !== sec.day);
-//     return [...others, sec];
-//   });
-
-//   // advance step: after Monday, go to Thursday
-//   if (location === 'SUGARLAND' && frequency === 'TWICE') {
-//     if (sec.day === 'Monday') setTwiceDayStep('Thursday');
-//   }
-// };
-
-
-const calcTotalSugarLand = () => {
-  if (location !== 'SUGARLAND') return 0;
-
-  // TWICE: fixed Spring 2026 price, label-independent
-  if (frequency === 'TWICE') {
-    // Expect exactly two sections (Mon & Thu)
-    if (selectedSections.length === 2) {
-      return TWO_DAY_PRICE_SUGARLAND_CENTS / 100;
+      return (
+        bundlePrice ??
+        selectedSections.reduce((sum, section) => sum + section.priceCents, 0)
+      );
     }
-    return 0;
-  }
 
-  // ONCE: section-based pricing
-  if (frequency === 'ONCE') {
-    if (selectedSections.length === 1) {
-      return selectedSections[0].priceCents / 100;
+    return selectedSections[0]?.priceCents ?? 0;
+  }, [frequency, selectedSections]);
+
+  const isFridayClass = selectedSections.some(section => section.day === 'Friday');
+
+  useEffect(() => {
+    if (city) {
+      schoolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    return 0;
-  }
+  }, [city]);
 
-  return 0;
-};
+  useEffect(() => {
+    if (school) {
+      frequencyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [school]);
 
+  useEffect(() => {
+    if (frequency) {
+      scheduleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [frequency]);
 
+  useEffect(() => {
+    if (formVisible) {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [formVisible]);
 
-  const [classCounts, setClassCounts] = useState<Counts>({
-  KATY: {
-    Monday: 0,
-    Tuesday: 0,
-    Wednesday: 0,
-    Thursday: 0,
-    Friday: 0,
-  },
-  SUGARLAND: {
-    Monday: 0,
-    Tuesday: 0,
-    Wednesday: 0,
-    Thursday: 0,
-    Friday: 0,
-  },
-});
+  useEffect(() => {
+    document.body.classList.toggle('modal-open', waitlistOpen);
+    return () => document.body.classList.remove('modal-open');
+  }, [waitlistOpen]);
 
+  const selectCity = (nextCity: CityKey) => {
+    setCity(nextCity);
+    setSchool(null);
+    setFrequency(null);
+    setSelectedSections([]);
+    setFormError('');
+  };
 
-  const openWaitlist = (loc: LocationKey, day?: DayKey) => {
-    setWaitlistLoc(loc);
-    setWaitlistDay(day ?? ''); // '' means choose from dropdown in the sheet
+  const selectSchool = (nextSchool: SchoolKey) => {
+    setSchool(nextSchool);
+    setFrequency(null);
+    setSelectedSections([]);
+    setFormError('');
+  };
+
+  const selectFrequency = (nextFrequency: FrequencyChoice) => {
+    setFrequency(nextFrequency);
+    setSelectedSections([]);
+    setFormError('');
+  };
+
+  const selectOneSection = (section: Section) => {
+    if (section.seatsRemaining <= 0) return;
+    setSelectedSections([section]);
+    setFormError('');
+  };
+
+  const selectTwiceGroup = (groupSections: Section[]) => {
+    if (groupSections.some(section => section.seatsRemaining <= 0)) return;
+    setSelectedSections(groupSections);
+    setFormError('');
+  };
+
+  const openWaitlist = (section?: Section) => {
+    setWaitlistCity(section?.city ?? city);
+    setWaitlistSchool(section?.school ?? school);
+    setWaitlistDay(section?.day ?? '');
     setWaitlistOpen(true);
     setWlMsg('');
   };
 
   const closeWaitlist = () => {
     setWaitlistOpen(false);
-    setWlStudentName(''); setWlAge(''); setWlParent('');
-    setWlPhone(''); setWlEmail(''); setWlNotes(''); setWlMsg('');
+    setWaitlistCity(null);
+    setWaitlistSchool(null);
+    setWaitlistDay('');
+    setWlStudentName('');
+    setWlAge('');
+    setWlParent('');
+    setWlPhone('');
+    setWlEmail('');
+    setWlNotes('');
+    setWlMsg('');
   };
 
-  const handleWaitlistSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!waitlistLoc) return;
+  const waitlistDays = useMemo(() => {
+    if (!waitlistCity || !waitlistSchool) return [];
 
-  const requestedDay = waitlistDay || (location ? daysMap[waitlistLoc].find(d => isSoldOut(waitlistLoc, d)) : '');
+    return unique(
+      sections
+        .filter(
+          section =>
+            section.city === waitlistCity &&
+            section.school === waitlistSchool &&
+            section.seatsRemaining === 0,
+        )
+        .map(section => section.day),
+    ).sort((a, b) => DAY_ORDER[a] - DAY_ORDER[b]);
+  }, [sections, waitlistCity, waitlistSchool]);
 
-  if (!requestedDay) {
-    setWlMsg('Please choose a day.');
-    return;
-  }
+  const handleWaitlistSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
-  setWlSubmitting(true);
-  try {
-    const resp = await fetch('/api/waitList', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentName: wlStudentName.trim(),
-        age: Number(wlAge || 0),
-        parentName: wlParent.trim(),
-        phone: wlPhone.trim(),
-        email: wlEmail.trim(),
-        location: waitlistLoc,
-        requestedDay,
-        notes: wlNotes.trim(),
-      })
-    });
-    const j = await resp.json();
-    if (j.success) {
-      setWlMsg('You’re on the list! We’ll email you as soon as we have information on more classes and dates! 🎉');
-      // optional: close after a short delay
-      // setTimeout(closeWaitlist, 1500);
-    } else {
-      setWlMsg(j.error || 'Something went wrong. Please try again.');
-    }
-  } catch {
-    setWlMsg('Network error. Please try again.');
-  } finally {
-    setWlSubmitting(false);
-  }
-};
-
-
-
-  const fetchCounts = async () => {
-    try {
-      const r = await fetch('/api/classCounts');
-      const j = await r.json();
-      if (j?.counts) setClassCounts(j.counts);
-    } catch (e) {
-      console.error('Failed to fetch class counts', e);
-    }
-  };
-
-  useEffect(() => { fetchCounts(); }, []);
-
-  const remainingFor = (loc: LocationKey, day: DayKey) =>
-    Math.max(0, MAX_CLASS_SIZE - (classCounts[loc]?.[day] ?? 0));
-
-  const isSoldOut = (loc: LocationKey, day: DayKey) => remainingFor(loc, day) === 0;
-
-  const lowSpotsMsg = (loc: LocationKey, day: DayKey) => {
-    const r = remainingFor(loc, day);
-    return r > 0 && r <= 5 ? `Hurry! only ${r} spot${r === 1 ? '' : 's'} left!` : '';
-  };
-
-  // If either day at a location is sold out, block the TWICE option
- const twoDaysUnavailable = (loc: LocationKey | null) => {
-  if (!loc) return false;
-  if (loc === 'SUGARLAND') return sugarlandTwiceUnavailable();
-  // Katy logic stays day-level
-  return daysMap[loc].some(d => isSoldOut(loc, d));
-};
-
-
-
-
-
-
-
-  useEffect(() => {
-    if (location && frequencyRef.current) {
-      frequencyRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [location]);
-
-const soldOutDaysMsg = (loc: LocationKey | null) => {
-  if (!loc) return '';
-
-  if (loc === 'SUGARLAND') {
-    const monOpen = sugarlandDayHasOpenSection('Monday');
-    const thuOpen = sugarlandDayHasOpenSection('Thursday');
-    if (monOpen && thuOpen) return '';
-    if (!monOpen && !thuOpen) return 'Both days sold out';
-    return !monOpen ? 'Monday sold out' : 'Thursday sold out';
-  }
-
-  // Katy: legacy day-level counts
-  const sold = daysMap[loc].filter(d => isSoldOut(loc, d));
-  if (sold.length === 0) return '';
-  if (sold.length === daysMap[loc].length) return 'Both days sold out';
-  return sold.join(' and ') + ' sold out';
-};
-
-const isSpring2026Section = (s: Section) => {
-  if (!s.startDate) return false;
-
-  const d = new Date(s.startDate);
-  const year = d.getFullYear();
-  const month = d.getMonth(); // 0 = Jan
-
-  // Spring 2026 = Jan (0) through May (4)
-  return year === 2026 && month >= 0 && month <= 4;
-};
-
-
-
-
-
-useEffect(() => {
-  if (frequency === 'ONCE' && dayRef.current) {
-    dayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  } else if (frequency === 'TWICE' && location === 'SUGARLAND') {
-    setSelectedSections([]);
-    setFormVisible(false);
-    // 👇 scroll to the twice-step container
-    setTimeout(() => {
-      twiceStepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  } else if (frequency === 'TWICE') {
-    // Katy (legacy) still shows form immediately
-    setFormVisible(true);
-  }
-}, [frequency, location]);
-
-const isFridayClass =
-  selectedDay === 'Friday' ||
-  (selectedSections.length === 1 && selectedSections[0].day === 'Friday');
-
-const isFridaySelected =
-  selectedSections.length === 1 && selectedSections[0].day === 'Friday';
-
-
-  useEffect(() => {
-    if (selectedDay) setFormVisible(true);
-  }, [selectedDay]);
-
-  useEffect(() => {
-    if (formVisible && formRef.current) {
-      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-  }, [formVisible]);
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  // Clean & normalize spaces
-  const cleanStudentName = studentName.trim().replace(/\s+/g, ' ');
-  const cleanParentName = parentName.trim().replace(/\s+/g, ' ');
-  const cleanEmail = email.trim();
-  const cleanPhone = phone.trim();
-
-  // Require all basic fields
-  if (!cleanStudentName || !cleanParentName || !cleanEmail || !cleanPhone) {
-    setFormError('All fields are required.');
-    return;
-  }
-
-  // Allow multiple last names but require at least two words
-  // const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/;
-  const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  // if (!nameRegex.test(cleanStudentName)) {
-  //   setFormError("Please enter the student's full name (at least first and last).");
-  //   return;
-  // }
-
-  const parsedAge = parseInt(age);
-  if (isNaN(parsedAge) || parsedAge < 1 || parsedAge > 17) {
-    setFormError('Please enter a valid student age between 1 and 17.');
-    return;
-  }
-
-  // if (!nameRegex.test(cleanParentName)) {
-  //   setFormError("Please enter the parent's full name (at least first and last).");
-  //   return;
-  // }
-
-  if (!phoneRegex.test(cleanPhone)) {
-    setFormError('Please enter a valid 10-digit phone number.');
-    return;
-  }
-
-  if (!emailRegex.test(cleanEmail)) {
-    setFormError('Please enter a valid email address.');
-    return;
-  }
-
-  if (!paymentMethod) {
-    setFormError('Please select a payment method.');
-    return;
-  }
-
-  if (!liabilityAccepted) {
-    setFormError('You must accept the liability disclaimer to continue.');
-    return;
-  }
-
-  setIsSubmitting(true);
-  setFormError('');
-
-  const selectedDays: DayKey[] =
-    frequency === 'ONCE' ? [selectedDay!] : [...daysMap[location!]];
-
-  // pick correct start date string
-  const chosenStartDate =
-    frequency === 'ONCE'
-      ? startDates[location!][selectedDay!]
-      : startDates[location!][daysMap[location!][0]]; // first day for 2-day schedule
-
-  const startDateStr = chosenStartDate;
-
-
-  // --- Sugar Land uses sectionIds instead of selectedDays ---
-  if (location === 'SUGARLAND') {
-    if (frequency === 'ONCE' && selectedSections.length !== 1) {
-      setFormError('Please choose one section'); setIsSubmitting(false); return;
-    }
-    if (frequency === 'TWICE' && selectedSections.length !== 2) {
-      setFormError('Please choose two sections'); setIsSubmitting(false); return;
-    }
-
-    const sectionIds = selectedSections.map(s => s.id);
-
-    const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentName: cleanStudentName,
-        age: parsedAge,
-        parentName: cleanParentName,
-        phone: cleanPhone,
-        email: cleanEmail,
-        paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
-        liabilityAccepted: true,
-        waiverSignature: { name: cleanParentName, address: cleanEmail },
-        sectionIds, // NEW
-      }),
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      // build a legacy-shaped payload so the email template has location/days/startDate
-      const emailPayload = {
-        studentName: cleanStudentName,
-        age: parsedAge,
-        parentName: cleanParentName,
-        phone: cleanPhone,
-        email: cleanEmail,
-        location: 'SUGARLAND',
-        frequency: normalizeFrequency(frequency!), // 'ONCE' | 'TWICE' (see note below)
-        selectedDays:
-          frequency === 'TWICE' ? (['Monday','Thursday'] as DayKey[])
-                                : ([selectedSections[0].day] as DayKey[]),
-        startDate:
-          frequency === 'TWICE'
-            ? (selectedSections.find(s => s.day === 'Monday')?.startDate?.slice(0,10) ?? '')
-            : (selectedSections[0]?.startDate?.slice(0,10) ?? ''),
-        liabilityAccepted: true,
-        paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
-        waiverSignature: { name: cleanParentName, address: cleanEmail },
-      };
-
-      await fetch('/api/sendConfirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailPayload),
-      });
-
-      setSubmitted(true);
-      setIsSubmitting(false);
+    if (!waitlistCity || !waitlistSchool || !waitlistDay) {
+      setWlMsg('Please choose a sold-out class day.');
       return;
     }
-  else { setFormError('Something went wrong. Please try again.'); }
-  }
 
-  if (!startDateStr) {
-    throw new Error('Please select a class before continuing.');
-    return;
-  }
+    setWlSubmitting(true);
+    setWlMsg('');
 
-// --- Legacy Katy payload ---
-const payload: RegistrationPayload = {
-  studentName: cleanStudentName,
-  age: parsedAge,
-  parentName: cleanParentName,
-  phone: cleanPhone,
-  email: cleanEmail,
-  location: location!,
-  frequency: normalizeFrequency(frequency!),
-  selectedDays,
-  startDate: startDateStr,
-  liabilityAccepted: true,
-  paymentMethod: paymentMethod as RegistrationPayload['paymentMethod'],
-  waiverSignature: { name: cleanParentName, address: cleanEmail },
-};
+    try {
+      const response = await fetch('/api/waitList', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: wlStudentName.trim(),
+          age: Number(wlAge),
+          parentName: wlParent.trim(),
+          phone: wlPhone.trim(),
+          email: wlEmail.trim(),
+          city: waitlistCity,
+          school: waitlistSchool,
+          requestedDay: waitlistDay,
+          notes: wlNotes.trim(),
+        }),
+      });
 
-const res = await fetch('/api/register', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(payload),
-});
-
-
-  const data = await res.json();
-
-  if (data.success) {
-    await fetch('/api/sendConfirmation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    setSubmitted(true);
-    fetchCounts();
-
-  } else {
-    setFormError('Something went wrong. Please try again.');
-  }
-
-  setFormVisible(false);
-  setLocation(null);
-  setIsSubmitting(false);
-};
-
-
-const handleWaitlistDayChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-  setWaitlistDay(e.target.value as DayKey | '');
-};
-
-
-const resetForm = () => {
-  setSubmitted(false);
-  setFormVisible(false);
-  setLocation(null);
-  setFrequency(null);
-  setSelectedDay(null);
-  setStudentName('');
-  setAge('');
-  setParentName('');
-  setPhone('');
-  setEmail('');
-  setPaymentMethod('');
-  setLiabilityAccepted(false);
-  setFormError('');
-};
-
-useEffect(() => {
-  if (waitlistOpen) {
-    document.body.classList.add('modal-open');
-  } else {
-    document.body.classList.remove('modal-open');
-  }
-  return () => document.body.classList.remove('modal-open');
-}, [waitlistOpen]);
-
-
-const calculateTotal = () => {
-  if (!location || !frequency) return 0;
-  // Sugar Land uses section-based pricing
-  if (location === 'SUGARLAND') return calcTotalSugarLand();
-  // Katy uses legacy day-based pricing
-  if (frequency === 'ONCE' && selectedDay) return prices[location][selectedDay];
-  if (frequency === 'TWICE') return prices[location].both;
-  return 0;
-};
-
-
-  
-  const personalizedWaiverText = (text: string) => {
-    if (!studentName) return text;
-    return text.replaceAll('PARTICIPANT', studentName.toUpperCase());
+      const data = (await response.json()) as { success: boolean; error?: string };
+      setWlMsg(
+        response.ok && data.success
+          ? 'You’re on the list! We’ll email you as soon as we have information on more classes and dates! '
+          : data.error || 'Something went wrong. Please try again.',
+      );
+    } catch {
+      setWlMsg('Network error. Please try again.');
+    } finally {
+      setWlSubmitting(false);
+    }
   };
 
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const cleanStudentName = studentName.trim().replace(/\s+/g, ' ');
+    const cleanParentName = parentName.trim().replace(/\s+/g, ' ');
+    const cleanEmail = email.trim();
+    const cleanPhone = phone.trim();
+    const parsedAge = Number.parseInt(age, 10);
+    const phoneRegex = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!city || !school || !frequency) {
+      setFormError('Please choose a city, school, and class schedule.');
+      return;
+    }
+
+    if (selectedSections.length !== expectedSectionCount) {
+      setFormError(
+        frequency === 'TWICE'
+          ? 'Please choose one complete two-day schedule.'
+          : 'Please choose one class.',
+      );
+      return;
+    }
+
+    if (!cleanStudentName || !cleanParentName || !cleanEmail || !cleanPhone) {
+      setFormError('All fields are required.');
+      return;
+    }
+
+    if (Number.isNaN(parsedAge) || parsedAge < 1 || parsedAge > 17) {
+      setFormError('Please enter a valid student age between 1 and 17.');
+      return;
+    }
+
+    if (!phoneRegex.test(cleanPhone)) {
+      setFormError('Please enter a valid 10-digit phone number.');
+      return;
+    }
+
+    if (!emailRegex.test(cleanEmail)) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!paymentMethod) {
+      setFormError('Please select a payment method.');
+      return;
+    }
+
+    if (!liabilityAccepted) {
+      setFormError('You must accept the liability disclaimer to continue.');
+      return;
+    }
+
+    const firstStartDate = selectedSections
+      .map(section => ymdFromIso(section.startDate))
+      .filter(Boolean)
+      .sort()[0];
+
+    if (!firstStartDate) {
+      setFormError('The selected class is missing a start date.');
+      return;
+    }
+
+    const payload: RegistrationPayload = {
+      studentName: cleanStudentName,
+      age: parsedAge,
+      parentName: cleanParentName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      city,
+      school,
+      frequency: normalizeFrequency(frequency),
+      selectedDays,
+      startDate: firstStartDate,
+      sectionIds: selectedSections.map(section => section.id),
+      liabilityAccepted: true,
+      paymentMethod,
+      waiverSignature: { name: cleanParentName, address: cleanEmail },
+    };
+
+    setIsSubmitting(true);
+    setFormError('');
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await response.json()) as { success: boolean; error?: string };
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Registration failed.');
+      }
+
+      const confirmationResponse = await fetch('/api/sendConfirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!confirmationResponse.ok) {
+        console.error('Registration succeeded, but confirmation email failed.');
+      }
+
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Registration submit failed', error);
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSubmitted(false);
+    setCity(null);
+    setSchool(null);
+    setFrequency(null);
+    setSelectedSections([]);
+    setStudentName('');
+    setAge('');
+    setParentName('');
+    setPhone('');
+    setEmail('');
+    setPaymentMethod('');
+    setLiabilityAccepted(false);
+    setFormError('');
+  };
+
+  const personalizedWaiverText = (text: string) =>
+    studentName
+      ? text.replaceAll('PARTICIPANT', studentName.toUpperCase())
+      : text;
 
   if (registrationOpen === null) {
     return <div>Loading…</div>;
   }
 
-  if (registrationOpen === false) {
+  if (loadError) {
     return (
       <div className="registration-closed">
-        <h1>Fall 2026 Registration Opens Soon</h1>
-        <p>Registration is not open yet. Please check back on <strong> August 11</strong>.</p>
+        <h1>Registration unavailable</h1>
+        <p>{loadError}</p>
+      </div>
+    );
+  }
+
+  if (!registrationOpen) {
+    return (
+      <div className="registration-closed">
+        <h1>{SESSION_LABEL} Registration Opens Soon</h1>
+        <p>Registration is not open yet. Please check back soon.</p>
         <p>Thank you!</p>
       </div>
     );
@@ -859,533 +657,646 @@ const calculateTotal = () => {
 
   return (
     <div className="registration-wrapper">
-      <div className="background-doodles">
-        
+    <div className="registration-card">
+      <div className="background-doodles" />
+
+      <div className="logo-container">
+        <img src="/bailakids/logo.png" alt="Baila Kids Logo" className="logo" />
       </div>
 
-       <div className="logo-container">
-            <img src="/bailakids/logo.png" alt="Baila Kids Logo" className="logo" />
-        </div>
+      {!submitted && (
+        <>
+          <div className="step">
+            <h1 className="reg-title">Welcome to the Baila Kids class registration!</h1>
+            <h1 className="title-moreinfo">
+              This registration is valid for the {SESSION_LABEL} session
+            </h1>
+            <h2 className="price-info">
+              All prices listed below are the total session amount
+            </h2>
+            <h2 className="questions">First, which city?</h2>
 
-
-    {!submitted && (
-      <>
-      <div className="step">
-        <h1 className="reg-title">Welcome to the Baila Kids class registration!</h1>
-        <h1 className="title-moreinfo">
-          This registration is valid for the Spring 2026 session
-        </h1>
-        <h2 className="price-info">All prices listed below are the TOTAL amount for all 16 weeks</h2>
-        <h2 className="questions">First, which is your preferred location?</h2>
-        <div className="button-group">
-          {(['KATY', 'SUGARLAND'] as const).map(loc => (
-            <button key={loc} onClick={() => setLocation(loc)} className={location === loc ? 'active' : ''}>{loc}</button>
-          ))}
-        </div>
-      </div>
-
-      {location && (
-        <div className="step fade-in" ref={frequencyRef}>
-          <h2 className="questions">How often do you want classes?</h2>
-          {/* <p className="daychose">
-            {frequency === 'ONCE'
-              ? 'Choose a day below to see individual pricing.'
-              : `Total for both days: $${prices[location].both}`}
-          </p> */}
-          <div className="button-group">
-            <button onClick={() => {
-                setFrequency('ONCE');
-                setSelectedSections([]);
-              }} className={frequency === 'ONCE' ? 'active' : ''}>
-              1 Day / Week 
-            </button>
-              <button
-                onClick={() => {setFrequency('TWICE'); setSelectedSections([])}}
-                className={frequency === 'TWICE' ? 'active' : ''}
-                disabled={twoDaysUnavailable(location) || isFridaySelected}
-              >
-                2 Days / Week {location === 'SUGARLAND' ? (
-                  <>
-                    <span className="days-text">Mon & Thu</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="mini-note">
-                  {KATY_TWO_DAY_TIME} • Tue & Wed {rangeNoteForKatyBothDays()} • ${prices.KATY.both}
-                </span>
-
-
-                  </>
-                )}
-
-                {/* Sold-out notice */}
-                {location && soldOutDaysMsg(location) && (
-                  <span className="soldout-note">{soldOutDaysMsg(location)}</span>
-                )}
-              </button>
-
-            {/* {frequency === 'TWICE' && location && (
-              <div className="selected-days-display">
-                {daysMap[location].join(' and ')} selected
-              </div>
-            )} */}
+            <div className="button-group">
+              {availableCities.map(cityOption => (
+                <button
+                  key={cityOption}
+                  type="button"
+                  onClick={() => selectCity(cityOption)}
+                  className={city === cityOption ? 'active' : ''}
+                >
+                  {CITY_LABELS[cityOption]}
+                </button>
+              ))}
+            </div>
           </div>
 
-        </div>
-      )}
-      {/* --- Sugar Land TWICE: pick 2 sections --- */}
-{location === 'SUGARLAND' && frequency === 'TWICE' && (
-  <div className="step fade-in" ref={twiceStepRef}>
-    <h2 className="questions">Choose your section for both days</h2>
-
-    <div className="button-group">
-      {(['A','B'] as const).map(label => {
-        const { mon, thu } = sugarlandGroup(label);
-        const selected =
-          selectedSections.length === 2 && selectedSections.every(s => s.label === label);
-        const soldOut = groupSoldOut(label);
-        const time =
-        mon?.startTime && mon?.endTime ? `${mon.startTime}–${mon.endTime}` : '';
-
-      // Discounted 2-day price by group
-        const price = TWO_DAY_PRICE_SUGARLAND_CENTS / 100;
-
-
-
-
-        // Optional “low spots” hint if either day is running low
-        const lowSpots =
-          mon && thu
-            ? [mon.seatsRemaining, thu.seatsRemaining].some(n => n > 0 && n <= 5)
-              ? `Hurry! only ${Math.min(mon.seatsRemaining, thu.seatsRemaining)} left on one day`
-              : ''
-            : '';
-
-        return (
-          <button
-            key={label}
-            disabled={soldOut}
-            className={`choice-card ${selected ? 'active' : ''} ${soldOut ? 'sold-out' : ''}`}
-            onClick={() => pickGroupBothDays(label)}
-            aria-pressed={selected}
-          >
-            <span className="day-label">Group {label}</span>
-            <span className="mini-note">
-              {' '}• {time} • Mon & Thu{groupRangeNoteForSugarLand(label)} • ${price}
-            </span>
-              <span className="spot-note">{soldOut ? 'Sold out' : lowSpots}</span>
-          </button>
-                );
-          })}
-    </div>
-
-    {/* Live selection summary */}
-    <div className="selection-summary">
-      <div className="summary-header">
-        <span className="summary-title">Your selection</span>
-        <span className="summary-total">Total: ${calcTotalSugarLand()}</span>
-      </div>
-
-      <div className="chip-row">
-        <span className={`chip ${selectedSections.length === 2 ? 'chip-ok' : 'chip-missing'}`}>
-          {selectedSections.length === 2
-            ? `Group ${selectedSections[0].label} • Mon & Thu`
-            : 'Pick Group A or B'}
-        </span>
-      </div>
-
-      {selectedSections.length !== 2 && (
-        <p className="next-hint">Choose A or B to continue.</p>
-      )}
-    </div>
-  </div>
-)}
-
-
-      
-
-      {/* --- Sugar Land ONCE: Section-based --- */}
-      {location === 'SUGARLAND' && frequency === 'ONCE' && (
-        <div className="step fade-in" ref={dayRef}>
-          <h2 className="questions">Choose your class</h2>
-           <h4 className="mini-note">
-                MONDAY AND THURSDAY ONLY AVAILABLE FOR BOLIVIA, COLOMBIA, COSTA RICA, ARGENTINA, VENEZUELA, SPAIN
-              </h4>
-          {(['Monday','Thursday'] as const).map(day => (
-            <div key={day} className="day-option-wrapper">
-              {/* <h3 className="day-header">{day}</h3> */}
+          {city && (
+            <div className="step fade-in" ref={schoolRef}>
+              <h2 className="questions">Which school location?</h2>
               <div className="button-group">
-                {sugarlandSectionsByDay(day).map(sec => {
-                  const selected = selectedSections.some(s => s.id === sec.id);
-                  const soldOut = sec.seatsRemaining === 0;
-                  const timeNote  = sec.startTime && sec.endTime ? ` • ${sec.startTime}–${sec.endTime}` : '';
-                  const rangeNote = rangeNoteForSection(sec);
-                  const priceNote = ` • $${(sec.priceCents / 100).toFixed(0)}`;
-
-                  return (
-                    <button
-                      key={sec.id}
-                      disabled={soldOut}
-                      className={`${selected ? 'active' : ''} ${soldOut ? 'sold-out' : ''}`}
-                      onClick={() => toggleSection(sec)}
-                      aria-pressed={selected}
-                    >
-                      <span className="day-label">{day} Group {sec.label}</span>
-                      <span className="mini-note">{timeNote}{rangeNote}{priceNote}</span>
-                      <span className="spot-note">
-                        {soldOut ? 'Sold out' :
-                          sec.seatsRemaining <= 5 ? `Hurry! only ${sec.seatsRemaining} left!` : ''}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          {/* --- Sugar Land Friday (ONCE only) --- */}
-          {sugarlandFridaySections.length > 0 && (
-            <div className="day-option-wrapper">
-              <h3 className="questions" style={{ marginTop: '1.5rem' }}>
-                Friday Class
-              </h3>
-              <h4 className="mini-note">
-                ONLY AVAILABLE FOR STUDENTS IN: PARAGUAY, PERU, AND MEXICO CLASSES
-              </h4>
-
-              <div className="button-group">
-                {sugarlandFridaySections.map(sec => {
-                  const selected = selectedSections.some(s => s.id === sec.id);
-                  const soldOut = sec.seatsRemaining === 0;
-                  const timeNote  = sec.startTime && sec.endTime ? ` • ${sec.startTime}–${sec.endTime}` : '';
-                  const rangeNote = rangeNoteForSection(sec);
-                  const priceNote = ` • $${(sec.priceCents / 100).toFixed(0)}`;
-
-                  return (
-                    <button
-                      key={sec.id}
-                      disabled={soldOut}
-                      className={`${selected ? 'active' : ''} ${soldOut ? 'sold-out' : ''}`}
-                      onClick={() => {
-                        setFrequency('ONCE');              // enforce rule
-                        setSelectedSections([sec]);        // Friday = exactly one
-                        setFormVisible(true);
-                      }}
-                      aria-pressed={selected}
-                    >
-                      <span className="day-label">{sec.day} Group {sec.label}</span>
-                      <span className="mini-note">
-                        {timeNote}{rangeNote}{priceNote}
-                      </span>
-                      <span className="spot-note">
-                        {soldOut
-                          ? 'Sold out'
-                          : sec.seatsRemaining <= 5
-                          ? `Hurry! only ${sec.seatsRemaining} left!`
-                          : ''}
-                      </span>
-                    </button>
-                  );
-                })}
+                {availableSchools.map(schoolOption => (
+                  <button
+                    key={schoolOption}
+                    type="button"
+                    onClick={() => selectSchool(schoolOption)}
+                    className={school === schoolOption ? 'active' : ''}
+                  >
+                    {SCHOOL_LABELS[schoolOption]}
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          <p className="total">Total: ${calcTotalSugarLand()}</p>
-        </div>
-      )}
+          {school && (
+            <div className="step fade-in" ref={frequencyRef}>
+              <h2 className="questions">How often do you want classes?</h2>
+              <div className="button-group">
+                <button
+                  type="button"
+                  onClick={() => selectFrequency('ONCE')}
+                  className={frequency === 'ONCE' ? 'active' : ''}
+                  disabled={!onceAvailable}
+                >
+                  1 Day / Week
+                  {!onceAvailable && <span className="soldout-note">Sold out</span>}
+                </button>
 
-      {/* --- KATY ONCE: Legacy --- */}
-      {location === 'KATY' && frequency === 'ONCE' && (
-        <div className="step fade-in" ref={dayRef}>
-          <h2 className="questions">Choose your day of the week (classes start the week of January 20th, 2026)</h2>
-          <div className="button-group">
-            {daysMap[location].map(day => (
-              <div className="day-option-wrapper" key={day}>
-                <div className="day-option">
-                  <button
-                    onClick={() => setSelectedDay(day)}
-                    className={`${selectedDay === day ? 'active' : ''} ${isSoldOut(location, day) ? 'sold-out' : ''}`}
-                    disabled={isSoldOut(location, day)}
-                  >
-                    <span className="day-label">{day}</span>
-                    <span className="mini-note">
-                    {rangeNoteForKaty(day)} • ${prices.KATY[day]}
-                    </span>
-                    <span className="spot-note">
-                      {isSoldOut(location, day)
-                        ? (
-                            <>
-                              Sold out ·{' '}
-                              <button
-                                type="button"
-                                className="waitlist-btn"
-                                onClick={() => openWaitlist(location, day)}
-                              >
-                                Join waitlist
-                              </button>
-                            </>
-                          )
-                        : lowSpotsMsg(location, day)}
-                    </span>
-                  </button>
+                <div className="frequency-button-wrapper">
+                <button
+                  type="button"
+                  onClick={() => selectFrequency('TWICE')}
+                  className={frequency === 'TWICE' ? 'active' : ''}
+                  disabled={!twiceAvailable}
+                >
+                  2 Days / Week
+                  {!twiceAvailable && (
+                    <span className="soldout-note">There is no two day schedule available for this location.</span>
+                  )}
+                </button>
+                 <div className="bundle-save-badge">
+                  SAVE 5%
+                </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-
-      {formVisible && !submitted && (
-        <div className="step fade-in" ref={formRef}>
-          <h2 className="student-reg-title">Student Registration</h2>
-          <form onSubmit={handleSubmit}>
-            <input type="text" placeholder="Student's FIRST and LAST Name" required value={studentName} onChange={e => setStudentName(e.target.value)} />
-            <select
-              className="form-input"
-              required
-              value={age}
-              onChange={e => setAge(e.target.value)}
-            >
-              <option value="">Student Age</option>
-
-            {isFridayClass ? (
-                <>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </>
-              ) : (
-                <>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                </>
+              {soldOutDays.length > 0 && (
+                <p className="soldout-note">
+                  Sold-out day{soldOutDays.length === 1 ? '' : 's'}: {soldOutDays.join(', ')}
+                </p>
               )}
-            </select>
+            </div>
+          )}
 
-            <input type="text" placeholder="Parent/Guardian FIRST and LAST Name" required value={parentName} onChange={e => setParentName(e.target.value)} />
-            <input type="text" placeholder="Phone" required value={phone} onChange={e => setPhone(e.target.value)} />
-            <input placeholder="Email" required type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          {school && frequency === 'ONCE' && (
+            <div className="step fade-in" ref={scheduleRef}>
+              <h2 className="questions">Choose your class</h2>
 
-            <p className="total">Total: ${calculateTotal()}</p>
 
-            <fieldset>
-              <legend>Select Payment Method:</legend>
-              <label><input type="radio" name="payment" value="Cash" onChange={e => setPaymentMethod(e.target.value)} required /> Cash</label>
-              <label><input type="radio" name="payment" value="Zelle" onChange={e => setPaymentMethod(e.target.value)} /> Zelle</label>
-              <label><input type="radio" name="payment" value="Check" onChange={e => setPaymentMethod(e.target.value)} /> Check</label>
-            </fieldset>
+              <div className="button-group">
+                {onceSections.map(section => {
+                  const selected = selectedSections.some(item => item.id === section.id);
+                  const soldOut = section.seatsRemaining <= 0;
+                  const time =
+                    section.startTime && section.endTime
+                      ? ` • ${section.startTime}–${section.endTime}`
+                      : '';
+                  const price = ` • $${(section.priceCents / 100).toFixed(0)}`;
 
-            <div className="liability-section">
-              <h3 className="liability-title">Liability Waiver</h3>
-              <div className="liability-text">
-                <p>
-                  {personalizedWaiverText(
-                    `On behalf of myself and my child/children participating in dance classes and related activities (“PARTICIPANT”), I acknowledge and understand the risks of physical injury inherent to dance classes and performances, including, without limitation, the risk of PARTICIPANT’s serious bodily injury or death. I understand that it is my responsibility to consult with a physician prior to and regarding PARTICIPANT’s participation in classes offered by BAILA KIDS.`
-                  )}
-                </p>
-                <p>
-                  {personalizedWaiverText(
-                    `On behalf of myself, and PARTICIPANT, I willingly assume such risks and I hereby expressly waive, release and hold harmless BAILA KIDS, its principals, officers, employees, agents, independent contractors and dance teachers (“RELEASEES”) from any and all liability, claims, judgments, or demands, arising from injuries sustained or illnesses contracted by PARTICIPANT while attending or participating in any dance classes, camps, rehearsals, workshops, birthday parties, events or performances. I covenant not to make or bring any such claim against BAILA KIDS or any other releasee and forever release and discharge BAILA KIDS and all other releasees from liability under such claims.`
-                  )}
-                </p>
-                <p>
-                  {personalizedWaiverText(
-                    `Further, I hereby represent that PARTICIPANT has no physical or mental disability or impairment or any illness that will endanger PARTICIPANT or others in connection with PARTICIPANT's participation in the dance classes and performances offered by BAILA KIDS. Furthermore, I agree to obey the class and facility rules and take full responsibility for PARTICIPANT’s behavior in addition to any damage that PARTICIPANT may cause to the facilities utilized by BAILA KIDS. In the event that I observe any unsafe conduct or conditions before, during or after classes offered by BAILA KIDS, I agree to report the unsafe conduct or conditions to the owner, director, instructor or staff member as soon as possible.`
-                  )}
-                </p>
+                  return (
+                    <div className="day-option-wrapper" key={section.id}>
+                      <div className="day-option">
+                        <button
+                          type="button"
+                          disabled={soldOut}
+                          className={`choice-card ${selected ? 'active' : ''} ${
+                            soldOut ? 'sold-out' : ''
+                          }`}
+                          onClick={() => selectOneSection(section)}
+                          aria-pressed={selected}
+                        >
+                          <div className="schedule-card">
+                            <div className="schedule-top">
+                              <span className="group-name">
+                                {section.day} · Group {section.label}
+                              </span>
+                              <span className="price-tag">
+                                ${(section.priceCents / 100).toFixed(0)}
+                              </span>
+                            </div>
+
+                            <div className="schedule-meta-row">
+                              <span className="schedule-meta-label">Time</span>
+                              <span className="schedule-meta-value">
+                                {time.replace(' • ', '')}
+                              </span>
+                            </div>
+
+                            <div className="schedule-meta-row">
+                              <span className="schedule-meta-label">Session</span>
+                              <span className="schedule-meta-value">
+                                {rangeNoteForSection(section).replace('• ', '')}
+                              </span>
+                            </div>
+
+                            <div className="schedule-meta-row">
+                              <span className="schedule-meta-label">Classes</span>
+                              <span className="schedule-meta-value">
+                                {section.eligibleClasses.join(', ')}
+                              </span>
+                            </div>
+
+                            {section.seatsRemaining <= 5 && !soldOut && (
+                              <div className="spots-warning">
+                                Only {section.seatsRemaining} spot{
+                                  section.seatsRemaining === 1 ? '' : 's'
+                                } left
+                              </div>
+                            )}
+
+                            {soldOut && <div className="soldout-pill">Sold out</div>}
+                          </div>
+                        </button>
+
+                        {soldOut && (
+                          <button
+                            type="button"
+                            className="waitlist-btn"
+                            onClick={() => openWaitlist(section)}
+                          >
+                            Join waitlist
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-
-              <label className="liability-checkbox">
-                <input
-                  type="checkbox"
-                  checked={liabilityAccepted}
-                  onChange={e => setLiabilityAccepted(e.target.checked)}
-                />
-                I ACCEPT AND ACKNOWLEDGE
-              </label>
+              <p className="total">Total: ${(totalCents / 100).toFixed(0)}</p>
             </div>
+          )}
 
+          {school && frequency === 'TWICE' && (
+            <div className="step fade-in" ref={scheduleRef}>
+              <h2 className="questions">Choose your two-day schedule</h2>
 
-            {formError && <p className="error">{formError}</p>}
+              <div className="button-group">
+                {twiceGroups.map(group => {
+                  const selected =
+                    selectedSections.length === 2 &&
+                    group.sections.every(section =>
+                      selectedSections.some(item => item.id === section.id),
+                    );
+                  const soldOut = group.sections.some(section => section.seatsRemaining <= 0);
+                  const days = group.sections.map(section => section.day).join(' & ');
+                  const timeLabels = unique(
+                    group.sections
+                      .map(section =>
+                        section.startTime && section.endTime
+                          ? `${section.startTime}–${section.endTime}`
+                          : '',
+                      )
+                      .filter(Boolean),
+                  );
+                  const time = timeLabels.length > 0 ? ` • ${timeLabels.join(' / ')}` : '';
+                  const groupTotal =
+                    group.sections[0].bundlePriceCents ??
+                    group.sections.reduce((sum, section) => sum + section.priceCents, 0);
+                  const minimumRemaining = Math.min(
+                    ...group.sections.map(section => section.seatsRemaining),
+                  );
 
-            {formVisible && !submitted && (
-              <div className="summary-box">
-                <h3 className='summary-title'>Summary: Please confirm that all information is correct</h3>
-                <ul>
-                  <li><strong>Location:</strong> {location}</li>
-                  <li><strong>Frequency:</strong> {frequency === 'ONCE' ? 'Once a week' : 'Twice a week'}</li>
-                  {location === 'SUGARLAND' ? (
+                  return (
+                    <div className="day-option-wrapper" key={group.label}>
+                      <div className="day-option">
+                        <button
+                          type="button"
+                          disabled={soldOut}
+                          className={`choice-card ${selected ? 'active' : ''} ${
+                            soldOut ? 'sold-out' : ''
+                          }`}
+                          onClick={() => selectTwiceGroup(group.sections)}
+                          aria-pressed={selected}
+                        >
+                          <div className="schedule-card">
+                            
+                            <div className="schedule-top">
+                              <span className="group-name">
+                                Group {group.label}
+                              </span>
+                              <span className="price-tag">
+                                ${(groupTotal / 100).toFixed(0)}
+                              </span>
+                            </div>
+                            <div className="schedule-days">{days}</div>
+
+                            <div className="schedule-meta-row">
+                              <span className="schedule-meta-label">Time</span>
+                              <span className="schedule-meta-value">
+                                {time.replace(' • ', '')}
+                              </span>
+                            </div>
+
+                            <div className="schedule-meta-row">
+                              <span className="schedule-meta-label">Session</span>
+                              <span className="schedule-meta-value">
+                                {rangeNoteForSections(group.sections).replace('• ', '')}
+                              </span>
+                            </div>
+
+                            <div className="schedule-meta-row">
+                              <span className="schedule-meta-label">Classes</span>
+                              <span className="schedule-meta-value">
+                                {group.sections[0].eligibleClasses.join(', ')}
+                              </span>
+                            </div>
+                            {minimumRemaining <= 5 && !soldOut && (
+                                <div className="spots-warning">
+                                  Hurry! Only {minimumRemaining} spot{minimumRemaining===1?"":"s"} left
+                                </div>
+                            )}
+
+                            {soldOut && (
+                                <div className="soldout-pill">
+                                  Sold Out
+                                </div>
+                            )}
+
+                          </div>
+
+                        </button>
+
+                        {soldOut && (
+                          <button
+                            type="button"
+                            className="waitlist-btn"
+                            onClick={() => openWaitlist(group.sections.find(s => s.seatsRemaining <= 0))}
+                          >
+                            Join waitlist
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="selection-summary">
+                <div className="summary-header">
+                  <span className="summary-title">Your selection</span>
+                  <span className="summary-total">
+                    Total: ${(totalCents / 100).toFixed(0)}
+                  </span>
+                </div>
+                <div className="chip-row">
+                  <span
+                    className={`chip ${
+                      selectedSections.length === 2 ? 'chip-ok' : 'chip-missing'
+                    }`}
+                  >
+                    {selectedSections.length === 2
+                      ? `Group ${selectedSections[0].label} • ${selectedDays.join(' & ')}`
+                      : 'Choose a complete two-day schedule'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {formVisible && (
+            <div className="step fade-in" ref={formRef}>
+              <h2 className="student-reg-title">Student Registration</h2>
+              <form onSubmit={handleSubmit}>
+                <input
+                  type="text"
+                  placeholder="Student's FIRST and LAST Name"
+                  required
+                  value={studentName}
+                  onChange={event => setStudentName(event.target.value)}
+                />
+
+                <select
+                  className="form-input"
+                  required
+                  value={age}
+                  onChange={event => setAge(event.target.value)}
+                >
+                  <option value="">Student Age</option>
+                  {isFridayClass ? (
                     <>
-                      <li>
-                        <strong>Selected Class(es):</strong>{' '}
-                        {selectedSections.length === 0
-                          ? '—'
-                          : selectedSections
-                              .map(s => {
-                                const time = s.startTime && s.endTime ? ` (${s.startTime}–${s.endTime})` : '';
-                                return `${s.day} ${s.label}${time}`;
-                              })
-                              .join(', ')
-                        }
-                      </li>
-                      <li>
-                        <strong>Start Date{selectedSections?.length > 1 ? 's' : ''}:</strong>{' '}
-                        {selectedSections.length === 0
-                          ? '—'
-                          : selectedSections
-                              .map(s => {
-                                // API gives ISO; trim to YYYY-MM-DD for your formatter
-                                const ymd = s.startDate ? s.startDate.slice(0, 10) : '';
-                                return `${s.day}: ${formatDateNoWeekday(ymd)}`;
-                              })
-                              .join(' | ')
-                        }
-                      </li>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
                     </>
                   ) : (
                     <>
-                      <li><strong>Selected Day(s):</strong> {frequency === 'ONCE' ? selectedDay : daysMap[location!].join(', ')}</li>
-                      <li>
-                        <strong>Start Date{frequency === 'TWICE' ? 's' : ''}:</strong>{' '}
-                        {frequency === 'ONCE'
-                          ? formatReadableDate(startDates[location!][selectedDay!])
-                          : daysMap[location!]
-                              .map(day => `${formatReadableDate(startDates[location!][day])}`)
-                              .join(' & ')
-                        }
-                      </li>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
                     </>
                   )}
+                </select>
 
-                  <li><strong>Student:</strong> {studentName} (Age: {age})</li>
-                  <li><strong>Parent:</strong> {parentName}</li>
-                  <li><strong>Phone:</strong> {phone}</li>
-                  <li><strong>Email:</strong> {email}</li>
-                  <li><strong>
-                    Payment method: </strong>{paymentMethod} 
-                    {paymentMethod === 'Zelle' && (
-                      <> (further instructions in confirmation email)</>
-                    )}
-                    {paymentMethod === ('Cash') && (
-                      <> (payment must be made before first day of classes)</>
-                    )}
-                    {paymentMethod === ('Check') && (
-                      <> (payment must be made before first day of classes)</>
-                    )}
-                  </li>                  
-                  <li><strong  className='final-total'>Total: ${calculateTotal()}</strong></li>
-                </ul>
-              </div>
-            )}
+                <input
+                  type="text"
+                  placeholder="Parent/Guardian FIRST and LAST Name"
+                  required
+                  value={parentName}
+                  onChange={event => setParentName(event.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Phone"
+                  required
+                  value={phone}
+                  onChange={event => setPhone(event.target.value)}
+                />
+                <input
+                  placeholder="Email"
+                  required
+                  type="email"
+                  value={email}
+                  onChange={event => setEmail(event.target.value)}
+                />
 
+                <p className="total">Total: ${(totalCents / 100).toFixed(0)}</p>
 
-            <button type="submit" disabled={isSubmitting || !studentName || !age || !parentName || !phone || !email || !paymentMethod || !liabilityAccepted}>
-              {isSubmitting ? 'Submitting...' : 'Register'}
-            </button>
-          </form>
-        </div>
+                <fieldset>
+                  <legend>Select Payment Method:</legend>
+                  {(['Cash', 'Zelle', 'Check'] as const).map(method => (
+                    <label key={method}>
+                      <input
+                        type="radio"
+                        name="payment"
+                        value={method}
+                        checked={paymentMethod === method}
+                        onChange={() => setPaymentMethod(method)}
+                        required={method === 'Cash'}
+                      />{' '}
+                      {method}
+                    </label>
+                  ))}
+                </fieldset>
+
+                <div className="liability-section">
+                  <h3 className="liability-title">Liability Waiver</h3>
+                  <div className="liability-text">
+                    <p>
+                      {personalizedWaiverText(
+                        `On behalf of myself and my child/children participating in dance classes and related activities (“PARTICIPANT”), I acknowledge and understand the risks of physical injury inherent to dance classes and performances, including, without limitation, the risk of PARTICIPANT’s serious bodily injury or death. I understand that it is my responsibility to consult with a physician prior to and regarding PARTICIPANT’s participation in classes offered by BAILA KIDS.`,
+                      )}
+                    </p>
+                    <p>
+                      {personalizedWaiverText(
+                        `On behalf of myself, and PARTICIPANT, I willingly assume such risks and I hereby expressly waive, release and hold harmless BAILA KIDS, its principals, officers, employees, agents, independent contractors and dance teachers (“RELEASEES”) from any and all liability, claims, judgments, or demands, arising from injuries sustained or illnesses contracted by PARTICIPANT while attending or participating in any dance classes, camps, rehearsals, workshops, birthday parties, events or performances. I covenant not to make or bring any such claim against BAILA KIDS or any other releasee and forever release and discharge BAILA KIDS and all other releasees from liability under such claims.`,
+                      )}
+                    </p>
+                    <p>
+                      {personalizedWaiverText(
+                        `Further, I hereby represent that PARTICIPANT has no physical or mental disability or impairment or any illness that will endanger PARTICIPANT or others in connection with PARTICIPANT's participation in the dance classes and performances offered by BAILA KIDS. Furthermore, I agree to obey the class and facility rules and take full responsibility for PARTICIPANT’s behavior in addition to any damage that PARTICIPANT may cause to the facilities utilized by BAILA KIDS. In the event that I observe any unsafe conduct or conditions before, during or after classes offered by BAILA KIDS, I agree to report the unsafe conduct or conditions to the owner, director, instructor or staff member as soon as possible.`,
+                      )}
+                    </p>
+                  </div>
+
+                  <label className="liability-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={liabilityAccepted}
+                      onChange={event => setLiabilityAccepted(event.target.checked)}
+                    />
+                    I ACCEPT AND ACKNOWLEDGE
+                  </label>
+                </div>
+
+                {formError && <p className="error">{formError}</p>}
+
+                <div className="summary-box">
+                  <h3 className="summary-title">
+                    Summary: Please confirm that all information is correct
+                  </h3>
+                  <ul>
+                    <li>
+                      <strong>City:</strong> {city ? CITY_LABELS[city] : '—'}
+                    </li>
+                    <li>
+                      <strong>School:</strong> {school ? SCHOOL_LABELS[school] : '—'}
+                    </li>
+                    <li>
+                      <strong>Frequency:</strong>{' '}
+                      {frequency === 'ONCE' ? 'Once a week' : 'Twice a week'}
+                    </li>
+                    <li>
+                      <strong>Selected Class(es):</strong>{' '}
+                      {selectedSections
+                        .map(section => {
+                          const time =
+                            section.startTime && section.endTime
+                              ? ` (${section.startTime}–${section.endTime})`
+                              : '';
+                          return `${section.day} ${section.label}${time}`;
+                        })
+                        .join(', ')}
+                    </li>
+                    <li>
+                      <strong>Start Date{selectedSections.length > 1 ? 's' : ''}:</strong>{' '}
+                      {selectedSections
+                        .map(section => {
+                          const ymd = ymdFromIso(section.startDate);
+                          return `${section.day}: ${formatDateNoWeekday(ymd)}`;
+                        })
+                        .join(' | ')}
+                    </li>
+                    <li>
+                      <strong>Student:</strong> {studentName} (Age: {age})
+                    </li>
+                    <li>
+                      <strong>Parent:</strong> {parentName}
+                    </li>
+                    <li>
+                      <strong>Phone:</strong> {phone}
+                    </li>
+                    <li>
+                      <strong>Email:</strong> {email}
+                    </li>
+                    <li>
+                      <strong>Payment method:</strong> {paymentMethod}
+                      {paymentMethod === 'Zelle' &&
+                        ' (further instructions in confirmation email)'}
+                      {(paymentMethod === 'Cash' || paymentMethod === 'Check') &&
+                        ' (payment must be made before the first day of classes)'}
+                    </li>
+                    <li>
+                      <strong className="final-total">
+                        Total: ${(totalCents / 100).toFixed(0)}
+                      </strong>
+                    </li>
+                  </ul>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={
+                    isSubmitting ||
+                    !studentName ||
+                    !age ||
+                    !parentName ||
+                    !phone ||
+                    !email ||
+                    !paymentMethod ||
+                    !liabilityAccepted
+                  }
+                >
+                  {isSubmitting ? 'Submitting...' : 'Register'}
+                </button>
+              </form>
+            </div>
+          )}
+        </>
       )}
-      </>
-    )}
 
       {submitted && (
         <div className="confirmation">
-          <h2 className="confirmation-title">🎉 Registration Complete! 🎉</h2>
+          <h2 className="confirmation-title"> Registration Complete! </h2>
           <p className="confirmation-text">
-            Thank you for registering. We’ve received your information and will send you a confirmation email shortly! <br/> <strong></strong>(Check your spam folder)
+            Thank you for registering. We’ve received your information and will send you a
+            confirmation email shortly! <br /> (Check your spam folder)
           </p>
-          <button className="reset-button" onClick={resetForm}>
+          <button className="reset-button" type="button" onClick={resetForm}>
             Submit another application
           </button>
         </div>
       )}
-{waitlistOpen && (
-  <div
-    className="sheet"
-    role="dialog"
-    aria-modal="true"
-    onMouseDown={(e) => { if (e.target === e.currentTarget) closeWaitlist(); }}
-    onTouchStart={(e) => { if (e.target === e.currentTarget) closeWaitlist(); }}
-  >
-    <div className="sheet__panel" onClick={(e) => e.stopPropagation()}>
-      <div className="sheet__grab" aria-hidden />
-         <button
-        type="button"
-        className="sheet__close"
-        aria-label="Close waitlist"
-        onClick={closeWaitlist}
-      >
-        
-      </button>
-      <h3 className="sheet__title">We’re opening more classes soon!</h3>
-      <p className="sheet__sub">Join the waitlist and we’ll email you as soon as we have information on more classes and dates!</p>
 
-      <form onSubmit={handleWaitlistSubmit} className="sheet__form" noValidate>
-        <div className="sheet__row">
-          <label>Location</label>
-          <input value={waitlistLoc ?? ''} readOnly />
-        </div>
+      {waitlistOpen && (
+        <div
+          className="sheet"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) closeWaitlist();
+          }}
+          onTouchStart={event => {
+            if (event.target === event.currentTarget) closeWaitlist();
+          }}
+        >
+          <div className="sheet__panel" onClick={event => event.stopPropagation()}>
+            <div className="sheet__grab" aria-hidden />
+            <button
+              type="button"
+              className="sheet__close"
+              aria-label="Close waitlist"
+              onClick={closeWaitlist}
+            />
 
-        <div className="sheet__row">
-          <label>Requested day</label>
-          {waitlistDay ? (
-            <input value={waitlistDay} readOnly />
-          ) : (
-            <select
-              value={waitlistDay}
-              onChange={handleWaitlistDayChange}
-              required
-            >
+            <h3 className="sheet__title">We’re opening more classes soon!</h3>
+            <p className="sheet__sub">
+              Join the waitlist and we’ll email you as soon as we have information on more
+              classes and dates!
+            </p>
 
-              <option value="">Choose a day</option>
-              {waitlistLoc && daysMap[waitlistLoc]
-                .filter(d => isSoldOut(waitlistLoc, d))
-                .map(d => <option key={d} value={d}>{d}</option>
-              )}
-            </select>
-          )}
-        </div>
+            <form onSubmit={handleWaitlistSubmit} className="sheet__form" noValidate>
+              <div className="sheet__row">
+                <label>City</label>
+                <input value={waitlistCity ? CITY_LABELS[waitlistCity] : ''} readOnly />
+              </div>
 
-        <div className="sheet__row"><label>Student name</label>
-          <input required value={wlStudentName} onChange={e => setWlStudentName(e.target.value)} />
-        </div>
-        <div className="sheet__row"><label>Age</label>
-          <input type="number" min={1} max={17} required value={wlAge} onChange={e => setWlAge(e.target.value)} />
-        </div>
-        <div className="sheet__row"><label>Parent/Guardian</label>
-          <input required value={wlParent} onChange={e => setWlParent(e.target.value)} />
-        </div>
-        <div className="sheet__row"><label>Phone</label>
-          <input required value={wlPhone} onChange={e => setWlPhone(e.target.value)} />
-        </div>
-        <div className="sheet__row"><label>Email</label>
-          <input type="email" required value={wlEmail} onChange={e => setWlEmail(e.target.value)} />
-        </div>
-        <div className="sheet__row"><label>Notes (optional)</label>
-          <input value={wlNotes} onChange={e => setWlNotes(e.target.value)} />
-        </div>
+              <div className="sheet__row">
+                <label>School</label>
+                <input value={waitlistSchool ? SCHOOL_LABELS[waitlistSchool] : ''} readOnly />
+              </div>
 
-        {wlMsg && <div className="sheet__msg">{wlMsg}</div>}
+              <div className="sheet__row">
+                <label>Requested day</label>
+                {waitlistDay ? (
+                  <input value={waitlistDay} readOnly />
+                ) : (
+                  <select
+                    value={waitlistDay}
+                    onChange={event => setWaitlistDay(event.target.value as DayKey | '')}
+                    required
+                  >
+                    <option value="">Choose a day</option>
+                    {waitlistDays.map(day => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
-        <div className="sheet__actions">
-          <button type="button" className="toggle-btn outline" onClick={closeWaitlist}>Cancel</button>
-          <button type="submit" className="toggle-btn" disabled={wlSubmitting}>
-            {wlSubmitting ? 'Joining…' : 'Join waitlist'}
-          </button>
+              <div className="sheet__row">
+                <label>Student name</label>
+                <input
+                  required
+                  value={wlStudentName}
+                  onChange={event => setWlStudentName(event.target.value)}
+                />
+              </div>
+              <div className="sheet__row">
+                <label>Age</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={17}
+                  required
+                  value={wlAge}
+                  onChange={event => setWlAge(event.target.value)}
+                />
+              </div>
+              <div className="sheet__row">
+                <label>Parent/Guardian</label>
+                <input
+                  required
+                  value={wlParent}
+                  onChange={event => setWlParent(event.target.value)}
+                />
+              </div>
+              <div className="sheet__row">
+                <label>Phone</label>
+                <input
+                  required
+                  value={wlPhone}
+                  onChange={event => setWlPhone(event.target.value)}
+                />
+              </div>
+              <div className="sheet__row">
+                <label>Email</label>
+                <input
+                  type="email"
+                  required
+                  value={wlEmail}
+                  onChange={event => setWlEmail(event.target.value)}
+                />
+              </div>
+              <div className="sheet__row">
+                <label>Notes (optional)</label>
+                <input
+                  value={wlNotes}
+                  onChange={event => setWlNotes(event.target.value)}
+                />
+              </div>
+
+              {wlMsg && <div className="sheet__msg">{wlMsg}</div>}
+
+              <div className="sheet__actions">
+                <button
+                  type="button"
+                  className="toggle-btn outline"
+                  onClick={closeWaitlist}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="toggle-btn" disabled={wlSubmitting}>
+                  {wlSubmitting ? 'Joining…' : 'Join waitlist'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
+      )}
     </div>
   </div>
-)}
-
-
-
-
-    </div>
-    
   );
 }

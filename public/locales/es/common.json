@@ -26,7 +26,7 @@
   },
   "register": "Registrar",
   "submitting": "Enviando...",
-  "complete_title": "🎉 ¡Registro completo! 🎉",
+  "complete_title": " ¡Registro completo! ",
   "complete_text": "¡Gracias por registrarte! Hemos recibido tu información y te enviaremos un correo de confirmación muy pronto.",
   "submit_another": "Enviar otra solicitud",
   "errors": {
