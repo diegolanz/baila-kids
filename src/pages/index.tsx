@@ -761,7 +761,6 @@ export default function Home() {
                     section.startTime && section.endTime
                       ? ` • ${section.startTime}–${section.endTime}`
                       : '';
-                  const price = ` • $${(section.priceCents / 100).toFixed(0)}`;
 
                   return (
                     <div className="day-option-wrapper" key={section.id}>
