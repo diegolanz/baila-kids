@@ -649,7 +649,7 @@ export default function Home() {
   if (!registrationOpen) {
     return (
       <div className="registration-closed">
-        <h1>{SESSION_LABEL} Registration Opens Soon</h1>
+        <h1>{SESSION_LABEL} Registration Opens August 11th</h1>
         <p>Registration is not open yet. Please check back soon.</p>
         <p>Thank you!</p>
       </div>
